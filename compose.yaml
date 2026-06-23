@@ -1,0 +1,66 @@
+services:
+    php:
+        image: smart-invoice-guard/php:8.5
+        hostname: php-fpm
+        build:
+            context: docker
+            dockerfile: php.Dockerfile
+        volumes:
+            - .:/var/www/html
+            - php_data:/var/lib/php/volume/
+        working_dir: /var/www/html
+        ports:
+            - 5173:5173
+        networks:
+            - app
+    httpd:
+        image: smart-invoice-guard/httpd:2.4
+        build:
+            context: docker
+            dockerfile: httpd.Dockerfile
+        volumes:
+            - .:/var/www/html
+            - ./docker/httpd.conf:/usr/local/apache2/conf/httpd.conf
+            - ./docker/default.conf:/usr/local/apache2/sites/default.conf
+            - php_data:/var/lib/php/volume/
+        working_dir: /var/www/html
+        ports:
+            - 8080:8080
+        depends_on:
+            - php
+        networks:
+            - app
+    db:
+        image: mariadb:10.11
+        hostname: mariadb
+        volumes:
+            - db_data:/var/lib/mysql
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: laravel
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: laravel
+        networks:
+            - app
+    redis:
+        image: redis:7.4-alpine
+        hostname: redis
+        volumes:
+            - redis_data:/data
+        networks:
+            - app
+    mailhog:
+        image: mailhog/mailhog:latest
+        hostname: mailhog
+        ports:
+            - 8025:8025
+        networks:
+            - app
+
+volumes:
+    php_data:
+    db_data:
+    redis_data:
+
+networks:
+    app:

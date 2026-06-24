@@ -21,7 +21,7 @@ export default defineConfig({
             ]
         },
         hmr: {
-            host: 'smart-invoice-guard.com', \
+            host: 'smart-invoice-guard.com',
         },
     },
     plugins: [

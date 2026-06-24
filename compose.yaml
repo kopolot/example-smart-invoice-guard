@@ -8,7 +8,10 @@ services:
         volumes:
             - .:/var/www/html
             - php_data:/var/lib/php/volume/
+            - ./docker/php.ini:/usr/local/etc/php/php.ini
         working_dir: /var/www/html
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
         ports:
             - 5173:5173
         networks:

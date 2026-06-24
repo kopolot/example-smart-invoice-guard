@@ -2,15 +2,18 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Carbon;
+use App\Enums\InvoiceStatus;
+use Database\Factories\InvoiceFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property string $number
  * @property float $amount
  * @property Carbon|null $date
  * @property float $tax_rate
@@ -20,10 +23,10 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  */
-#[Fillable(['user_id', 'amount', 'date', 'tax_rate', 'total_amount', 'status'])]
+#[Fillable(['user_id', 'number', 'amount', 'date', 'tax_rate', 'total_amount', 'status'])]
 class Invoice extends Model
 {
-    /** @use HasFactory<\Database\Factories\InvoiceFactory> */
+    /** @use HasFactory<InvoiceFactory> */
     use HasFactory, SoftDeletes;
 
     public function user(): BelongsTo
@@ -34,7 +37,7 @@ class Invoice extends Model
     protected function casts(): array
     {
         return [
-            'status' => \App\Enums\InvoiceStatus::class,
+            'status' => InvoiceStatus::class,
         ];
     }
 }

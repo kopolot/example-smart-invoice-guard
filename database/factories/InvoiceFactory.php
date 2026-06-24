@@ -2,9 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
-use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends Factory<Invoice>
@@ -21,9 +22,11 @@ class InvoiceFactory extends Factory
         $fake_amount = fake()->randomFloat(2, 100, 1000);
         $fake_tax_rate = fake()->randomFloat(2, 0, 0.2);
         $fake_total_amount = $fake_amount * (1 + $fake_tax_rate);
-        $fake_status = fake()->randomElement(\App\Enums\InvoiceStatus::cases());
+        $fake_status = fake()->randomElement(InvoiceStatus::cases());
         $random_user = User::inRandomOrder()->first();
+
         return [
+            'number' => fake()->unique()->numerify('INV-####'),
             'amount' => $fake_amount,
             'tax_rate' => $fake_tax_rate,
             'total_amount' => $fake_total_amount,

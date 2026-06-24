@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\InvoiceStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreInvoiceRequest extends FormRequest
 {
@@ -24,7 +25,7 @@ class StoreInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'number' => 'required|string',
+            'number' => ['required', 'string', Rule::unique('invoices', 'number')->where('user_id', $this->user()->id)],
             'amount' => 'required|numeric|min:0',
             'tax_rate' => 'required|numeric|min:0',
             'date' => 'required|date',

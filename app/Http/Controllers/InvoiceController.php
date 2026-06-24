@@ -7,6 +7,8 @@ use App\Http\Requests\UpdateInvoiceRequest;
 use App\Models\Invoice;
 use App\Services\InvoicePriceCalculator;
 use Inertia\Inertia;
+use App\Jobs\GenerateInvoicePdfJob;
+use App\Events\InvoicePaid;
 
 class InvoiceController extends Controller
 {
@@ -105,5 +107,23 @@ class InvoiceController extends Controller
         $invoice->delete();
 
         return redirect()->route('invoices.index');
+    }
+
+    public function pdf(Invoice $invoice)
+    {
+        GenerateInvoicePdfJob::dispatch($invoice);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Invoice will be generated in a few seconds.')]);
+        return redirect(route('invoices.show', $invoice));
+    }
+
+    public function pay(Invoice $invoice)
+    {
+        if ($invoice->status?->value === 'paid') {
+            Inertia::flash('toast', ['type' => 'error', 'message' => __('Invoice already paid.')]);
+            return redirect(route('invoices.show', $invoice));
+        }
+        InvoicePaid::dispatch($invoice);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Invoice paid successfully.')]);
+        return redirect(route('invoices.show', $invoice));
     }
 }

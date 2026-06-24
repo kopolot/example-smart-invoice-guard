@@ -12,4 +12,6 @@ Route::prefix('invoices')->name('invoices.')->middleware(['auth'])->controller(I
     Route::get('/{invoice:id}/edit', 'edit')->can('update', 'invoice')->name('edit');
     Route::get('/{invoice:id}/delete', 'deleteMethod')->can('delete', 'invoice')->name('delete');
     Route::post('/{invoice:id}', 'update')->can('update', 'invoice')->name('update');
+    Route::get('/{invoice:id}/pdf', 'pdf')->can('view', 'invoice')->name('pdf');
+    Route::get('/{invoice:id}/pay', 'pay')->can('view', 'invoice')->name('pay');
 });

@@ -5,23 +5,23 @@ import vue from '@vitejs/plugin-vue';
 import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig } from 'vite';
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 export default defineConfig({
     server: {
         host: '0.0.0.0',
+        https: true,
         cors: {
             origin: [
-                'http://smart-invoice-guard.com:8080',
-                'http://localhost:5173',
-                'http://127.0.0.1:5173',
-                'http://smart-invoice-guard.com:5173',
-                'http://[::1]:5173',
-                'http://127.0.0.1:8080',
-                'http://[::1]:8080',
+                'https://smart-invoice-guard.com',
+                'https://smart-invoice-guard.com:8080',
+                'https://smart-invoice-guard.com:5173',
+                'https://localhost:5173',
+                'https://127.0.0.1:5173',
             ]
         },
         hmr: {
-            host: 'smart-invoice-guard.com',
+            host: 'smart-invoice-guard.com', \
         },
     },
     plugins: [
@@ -47,5 +47,6 @@ export default defineConfig({
         wayfinder({
             formVariants: true,
         }),
+        basicSsl(),
     ],
 });

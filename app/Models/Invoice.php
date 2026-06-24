@@ -22,8 +22,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
+ * @property string|null $pdf_path
  */
-#[Fillable(['user_id', 'number', 'amount', 'date', 'tax_rate', 'total_amount', 'status'])]
+#[Fillable(['user_id', 'number', 'amount', 'date', 'tax_rate', 'total_amount', 'status', 'pdf_path'])]
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */

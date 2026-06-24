@@ -6,4 +6,5 @@ use App\Providers\FortifyServiceProvider;
 return [
     AppServiceProvider::class,
     FortifyServiceProvider::class,
+    \Barryvdh\DomPDF\ServiceProvider::class,
 ];

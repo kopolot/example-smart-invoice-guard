@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { index, show, edit, deleteMethod } from '@/routes/invoices';
+import { index, show, edit, deleteMethod, pdf, pay } from '@/routes/invoices';
 import type { Invoice } from '@/types/invoice';
 import { availableStatusesLabels } from '@/types/invoice';
+import { toast } from 'vue-sonner';
 
-defineProps<{
+const props = defineProps<{
     invoice: Invoice;
 }>();
 
@@ -21,6 +22,12 @@ defineOptions({
         ],
     }),
 });
+
+const copyPaymentLink = () => {
+    const paymentLink = new URL(pay(props.invoice.id).url, window.location.origin);
+    navigator.clipboard.writeText(paymentLink.toString());
+    toast.success('Payment link copied to clipboard');
+};
 </script>
 
 <template>
@@ -71,9 +78,19 @@ defineOptions({
         <Button class="bg-red-500 text-white px-5 py-1 rounded" >
             <a :href="deleteMethod(invoice.id).url">Delete</a>
         </Button>
-        <Button class="bg-green-500 text-white px-5 py-1 rounded" >
-            <a href="#">Set as Paid</a>
+        <Button class="bg-green-500 text-white px-5 py-1 rounded cursor-pointer" @click="copyPaymentLink" :disabled="invoice.status === 'paid'" >
+            {{ invoice.status === 'paid' ? 'Invoice already paid' : 'Copy payment link' }}
         </Button>
+        <Button class="bg-yellow-500 text-white px-5 py-1 rounded" >
+            <a :href="pdf(invoice.id).url">Generate PDF</a>
+        </Button>
+    </div>
+    <div class="p-5" v-if="invoice.pdf_path">
+        <Label>PDF</Label>
+        <div class="flex flex-row border-b border-gray-200 pb-4 gap-2">
+            <iframe :src="invoice.pdf_path" frameborder="0" class="w-full h-full min-h-[500px]"/>
+        </div>
+        <a class="text-blue-500" :href="invoice.pdf_path" target="_blank">Download PDF</a>
     </div>
 </template>
 

@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\Invoice;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Storage;
+
+class GenerateInvoicePdfJob implements ShouldQueue
+{
+    use Queueable;
+
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(private Invoice $invoice)
+    {
+        //
+    }
+
+    /**
+     * Execute the job.
+     */
+    public function handle(): void
+    {
+        // not perfect but it works for now
+        // TODO: private storage and PdfFileController to handle the pdf file
+        $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $this->invoice]);
+        $path = 'invoices/' . $this->invoice->user_id . '/' . $this->invoice->id . '.pdf';
+        Storage::disk('public')->put($path, $pdf->output());
+        $this->invoice->update([
+            'pdf_path' => Storage::url($path),
+        ]);
+        $this->invoice->save();
+    }
+}

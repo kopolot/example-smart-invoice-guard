@@ -7,6 +7,7 @@ export type Invoice = {
     status: InvoiceStatus;
     date: string;
     user_id: number;
+    pdf_path: string | null;
     created_at: string;
     updated_at: string;
     deleted_at: string | null;

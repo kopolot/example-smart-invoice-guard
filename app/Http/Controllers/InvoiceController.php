@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\InvoicePaid;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
+use App\Jobs\GenerateInvoicePdfJob;
 use App\Models\Invoice;
 use App\Services\InvoicePriceCalculator;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
-use App\Jobs\GenerateInvoicePdfJob;
-use App\Events\InvoicePaid;
 
 class InvoiceController extends Controller
 {
@@ -101,7 +102,6 @@ class InvoiceController extends Controller
     //     return redirect()->route('invoices.index');
     // }
 
-
     public function deleteMethod(Invoice $invoice)
     {
         $invoice->delete();
@@ -112,6 +112,7 @@ class InvoiceController extends Controller
     public function pdf(Invoice $invoice)
     {
         GenerateInvoicePdfJob::dispatch($invoice);
+
         return response()->json(['message' => __('Invoice will be generated in a few seconds.')]);
     }
 
@@ -119,10 +120,20 @@ class InvoiceController extends Controller
     {
         if ($invoice->status?->value === 'paid') {
             Inertia::flash('toast', ['type' => 'error', 'message' => __('Invoice already paid.')]);
+
             return redirect(route('invoices.show', $invoice));
         }
         InvoicePaid::dispatch($invoice);
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Invoice paid successfully.')]);
-        return redirect(route('invoices.show', $invoice));
+
+        return redirect(route('home'));
+    }
+
+    public function payForm(Invoice $invoice)
+    {
+        return Inertia::render('invoices/PayForm', [
+            'invoice' => $invoice,
+            'idempotencyKey' => "invoice_pay:" . $invoice->id,
+        ]);
     }
 }

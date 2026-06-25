@@ -7,6 +7,7 @@ use App\Events\InvoicePdfGenerated;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class GenerateInvoicePdfJob implements ShouldQueue
@@ -30,10 +31,12 @@ class GenerateInvoicePdfJob implements ShouldQueue
         // TODO: private storage and PdfFileController to handle the pdf file
         $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $this->invoice]);
         $path = 'invoices/' . $this->invoice->user_id . '/' . $this->invoice->id . '.pdf';
-        Storage::disk('public')->put($path, $pdf->output());
-        $this->invoice->update([
-            'pdf_path' => Storage::url($path),
-        ]);
-        InvoicePdfGenerated::dispatch($this->invoice);
+        DB::transaction(function () use ($path, $pdf) {
+            Storage::disk('public')->put($path, $pdf->output());
+            $this->invoice->update([
+                'pdf_path' => Storage::url($path),
+            ]);
+            InvoicePdfGenerated::dispatch($this->invoice);
+        });
     }
 }

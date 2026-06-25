@@ -2,6 +2,7 @@
 import { index, show, edit, deleteMethod, pdf, pay } from '@/routes/invoices';
 import type { Invoice } from '@/types/invoice';
 import { availableStatusesLabels } from '@/types/invoice';
+import { Form } from '@inertiajs/vue3';
 import { useEcho } from '@laravel/echo-vue';
 import axios from 'axios';
 import { ref } from 'vue';
@@ -102,7 +103,9 @@ const generatePdf = async () => {
             <a :href="edit(invoice.id).url">Edit</a>
         </Button>
         <Button class="bg-red-500 text-white px-5 py-1 rounded" >
-            <a :href="deleteMethod(invoice.id).url">Delete</a>
+            <Form :action="deleteMethod(invoice.id).url" method="delete" v-slot="{   processing }">
+                <Button type="submit" :disabled="processing">Delete</Button>
+            </Form>
         </Button>
         <Button class="bg-green-500 text-white px-5 py-1 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" @click="copyPaymentLink" :disabled="invoice.status === 'paid'" >
             {{ invoice.status === 'paid' ? 'Invoice already paid' : 'Copy payment link' }}

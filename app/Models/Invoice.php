@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use App\Casts\EncryptedData;
 
 /**
  * @property int $id
@@ -17,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property float $amount
  * @property Carbon|null $date
  * @property float $tax_rate
+ * @property EncryptedData $tax_number
  * @property float $total_amount
  * @property InvoiceStatus $status
  * @property Carbon|null $created_at
@@ -24,7 +26,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property string|null $pdf_path
  */
-#[Fillable(['user_id', 'number', 'amount', 'date', 'tax_rate', 'total_amount', 'status', 'pdf_path'])]
+#[Fillable(['user_id', 'number', 'amount', 'date', 'tax_rate', 'tax_number', 'total_amount', 'status', 'pdf_path'])]
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */
@@ -39,6 +41,7 @@ class Invoice extends Model
     {
         return [
             'status' => InvoiceStatus::class,
+            'tax_number' => EncryptedData::class,
         ];
     }
 }

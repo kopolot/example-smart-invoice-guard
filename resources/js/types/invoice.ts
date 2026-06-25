@@ -3,6 +3,7 @@ export type Invoice = {
     number: string;
     amount: number;
     tax_rate: number;
+    tax_number: string;
     total_amount: number;
     status: InvoiceStatus;
     date: string;

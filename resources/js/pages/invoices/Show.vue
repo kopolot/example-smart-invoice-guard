@@ -54,7 +54,7 @@ const generatePdf = async () => {
         toast.error('Failed to generate PDF');
     }
 };
-
+console.log(invoice.value);
 </script>
 
 <template>
@@ -78,6 +78,12 @@ const generatePdf = async () => {
             <div class="">
                     <p>{{ invoice.tax_rate }}</p>
                 </div>
+        </div>
+        <div class="flex flex-row border-b border-gray-200 pb-4 gap-2">
+            <Label>Tax Number</Label>
+            <div class="">
+                <p>{{ invoice.tax_number }}</p>
+            </div>
         </div>
         <div class="flex flex-row border-b border-gray-200 pb-4 gap-2">
             <Label>Total Amount</Label>
@@ -110,7 +116,7 @@ const generatePdf = async () => {
         <Button class="bg-green-500 text-white px-5 py-1 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" @click="copyPaymentLink" :disabled="invoice.status === 'paid'" >
             {{ invoice.status === 'paid' ? 'Invoice already paid' : 'Copy payment link' }}
         </Button>
-        <Button class="bg-yellow-500 text-white px-5 py-1 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" :disabled="invoice.pdf_path != ''" @click="generatePdf" >
+        <Button class="bg-yellow-500 text-white px-5 py-1 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" :disabled="invoice.pdf_path !== null && invoice.pdf_path !== ''" @click="generatePdf" >
             Generate PDF
         </Button>
     </div>

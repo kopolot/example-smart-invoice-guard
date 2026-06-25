@@ -68,6 +68,13 @@ const invoiceRef = ref<Invoice>(props.invoice);
                 </div>
             </div>
             <div class="row grid grid-cols-3">
+                <Label class="col" for="tax_number">Tax Number</Label>
+                <div class="col-2 col-end-4">
+                    <Input required type="text" name="tax_number" placeholder="Tax Number" v-model="invoiceRef.tax_number" />
+                    <InputError :message="errors.tax_number" />
+                </div>
+            </div>
+            <div class="row grid grid-cols-3">
                 <Label class="col" for="status">Status</Label>
                 <div class="col-2 col-end-4">
                     <Select required name="status" v-model="invoiceRef.status">

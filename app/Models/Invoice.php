@@ -18,7 +18,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $date
  * @property float $tax_rate
  * @property float $total_amount
- * @property string $status
+ * @property InvoiceStatus $status
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at

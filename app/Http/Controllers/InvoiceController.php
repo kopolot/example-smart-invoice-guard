@@ -112,8 +112,7 @@ class InvoiceController extends Controller
     public function pdf(Invoice $invoice)
     {
         GenerateInvoicePdfJob::dispatch($invoice);
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Invoice will be generated in a few seconds.')]);
-        return redirect(route('invoices.show', $invoice));
+        return response()->json(['message' => __('Invoice will be generated in a few seconds.')]);
     }
 
     public function pay(Invoice $invoice)

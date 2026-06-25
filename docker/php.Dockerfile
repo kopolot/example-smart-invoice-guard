@@ -3,7 +3,7 @@ RUN apk update
 RUN apk add nano git bash sudo bash-completion mariadb-client autoconf build-base cronie nodejs npm composer;apk add --update linux-headers libzip-dev icu-dev
 RUN pecl install "xdebug-3.5.0";
 RUN echo "zend_extension=xdebug.so" > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
-RUN docker-php-ext-install mysqli intl zip pdo_mysql
+RUN docker-php-ext-install intl zip pdo_mysql pcntl
 RUN pecl install redis
 RUN echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini
 

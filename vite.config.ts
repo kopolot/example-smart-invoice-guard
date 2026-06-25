@@ -18,6 +18,7 @@ export default defineConfig({
                 'https://smart-invoice-guard.com:5173',
                 'https://localhost:5173',
                 'https://127.0.0.1:5173',
+                'https://smart-invoice-guard.com:8443',
             ]
         },
         hmr: {

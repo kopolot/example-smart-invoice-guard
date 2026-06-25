@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Invoice;
+use App\Events\InvoicePdfGenerated;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -33,6 +34,6 @@ class GenerateInvoicePdfJob implements ShouldQueue
         $this->invoice->update([
             'pdf_path' => Storage::url($path),
         ]);
-        $this->invoice->save();
+        InvoicePdfGenerated::dispatch($this->invoice);
     }
 }

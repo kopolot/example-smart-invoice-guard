@@ -2,8 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\InvoiceStatus;
-use App\Models\Invoice;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -28,13 +26,6 @@ class EnsureRequestIsIdempotent
         $cacheKey = "idempotency_key:{$key}";
 
         if (!Cache::add($cacheKey, 'processing', now()->addMinutes(5))) {
-            $invoice = $request->route('invoice');
-
-            if ($invoice instanceof Invoice && $invoice->status === InvoiceStatus::PAID) {
-                Inertia::flash('toast', ['type' => 'success', 'message' => __('Invoice paid successfully.')]);
-
-                return redirect()->route('home');
-            }
 
             return $this->reject($request, __('Request already processed or processing.'));
         }

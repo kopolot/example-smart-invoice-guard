@@ -17,3 +17,5 @@ RUN chown container:container /var/lib/php/volume; chmod 1733 /var/lib/php/volum
 ENV SHELL=/bin/bash
 RUN echo 'alias sudo="sudo -E"' > /etc/profile.d/00sudo.sh
 RUN echo 'source /var/www/html/.bashrc' >> /etc/profile.d/00-bashrc.sh
+
+USER container

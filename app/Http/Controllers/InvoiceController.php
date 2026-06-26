@@ -22,8 +22,17 @@ class InvoiceController extends Controller
      */
     public function index()
     {
+        $perPage = 10;
+        $page = request()->input('page', 1);
+        // if is ajax request and no inertia request, return the invoices
+        if (request()->ajax() && !request()->inertia()) {
+            return response()->json([
+                'invoicesPagination' => auth()->user()->invoices()->paginate($perPage, page: $page),
+            ]);
+        }
+        $invoices = auth()->user()->invoices()->paginate($perPage, page: $page);
         return Inertia::render('invoices/Index', [
-            'invoices' => auth()->user()->invoices,
+            'invoicesPagination' => $invoices,
         ]);
     }
 

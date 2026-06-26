@@ -5,6 +5,7 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { initializeFlashToast } from '@/lib/flashToast';
 import { configureEcho } from '@laravel/echo-vue';
+import '@/bootstrap';
 
 configureEcho({
     broadcaster: 'reverb',

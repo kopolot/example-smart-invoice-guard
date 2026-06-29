@@ -1,13 +1,12 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Api;
 
-use App\Enums\InvoiceStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use App\Enums\InvoiceStatus;
 
-class StoreInvoiceRequest extends FormRequest
+class GenerateInvoicePdf extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,7 +24,7 @@ class StoreInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'number' => ['required', 'string', Rule::unique('invoices', 'number')->where('user_id', $this->user()->id)],
+            'number' => ['required', 'string'],
             'amount' => 'required|numeric|min:0',
             'tax_rate' => 'required|numeric|min:0',
             'tax_number' => 'required|string',

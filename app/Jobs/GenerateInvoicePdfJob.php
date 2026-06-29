@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Services\PdfMaker;
 
 class GenerateInvoicePdfJob implements ShouldQueue
 {
@@ -25,17 +26,16 @@ class GenerateInvoicePdfJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(): void
+    public function handle(PdfMaker $pdfMaker): void
     {
         // not perfect but it works for now
         // TODO: private storage and PdfFileController to handle the pdf file
-        $pdf = Pdf::loadView('pdf.invoice', ['invoice' => $this->invoice]);
         $path = 'invoices/' . $this->invoice->user_id . '/' . $this->invoice->id . '_' . date('Y-m-d_H-i-s') . '.pdf';
         try {
             throw_unless(
-                Storage::disk('public')->put($path, $pdf->output()),
+                $pdfMaker->make($this->invoice, $path),
                 \Exception::class,
-                'Failed to save pdf file'
+                'Failed to make pdf file'
             );
             throw_unless(
                 $this->invoice->update([

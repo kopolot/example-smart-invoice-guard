@@ -24,5 +24,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'settings/Appearance')->name('appearance.edit');
+
+    Route::post('settings/security/generate-token', [SecurityController::class, 'generateToken'])
+        ->middleware('throttle:6,1')
+        ->name('security.generate-token');
 });
 

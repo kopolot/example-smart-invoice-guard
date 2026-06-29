@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -7,12 +6,18 @@ import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/security';
+import { Form, Head } from '@inertiajs/vue3';
+import axios from 'axios';
+import {ref} from 'vue';
+import { toast } from 'vue-sonner';
 
 type Props = {
     passwordRules: string;
 };
 
 const props = defineProps<Props>();
+
+const token = ref(null);
 
 defineOptions({
     layout: {
@@ -24,6 +29,17 @@ defineOptions({
         ],
     },
 });
+
+const generateToken = async () => {
+    try {
+        const response = await axios.post(SecurityController.generateToken().url);
+        token.value = response.data.token;
+        toast.success('Token generated successfully');
+    }catch (error) {
+        console.error(error);
+        toast.error('Failed to generate token');
+    }
+};
 </script>
 
 <template>
@@ -99,5 +115,21 @@ defineOptions({
                 </Button>
             </div>
         </Form>
+
+        <div class="space-y-6">
+
+            <div v-if="token" >
+                <p>Your API token is:</p>
+                <p>{{ token }}</p>
+            </div>
+            <Button
+                data-test="generate-token-button"
+                class="cursor-pointer"
+                @click="generateToken"
+            >
+                Generate token
+            </Button>
+        </div>
+
     </div>
 </template>

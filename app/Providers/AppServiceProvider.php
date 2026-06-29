@@ -5,8 +5,11 @@ namespace App\Providers;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Http\Request;
+use Illuminate\Cache\RateLimiting\Limit;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +27,20 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        RateLimiter::for('invoice-api', function (Request $request) {
+            $userId = null;
+
+            if ($token = $request->bearerToken()) {
+                $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+
+                if ($accessToken) {
+                    $userId = $accessToken->tokenable_id;
+                }
+            }
+
+            return Limit::perMinute($userId ? 60 : 5)
+                ->by($userId ?: $request->ip());
+        });
     }
 
     /**
@@ -37,7 +54,8 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
+        Password::defaults(
+            fn(): ?Password => app()->isProduction()
             ? Password::min(12)
                 ->mixedCase()
                 ->letters()

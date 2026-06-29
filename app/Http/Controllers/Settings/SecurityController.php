@@ -10,6 +10,8 @@ use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Fortify\Features;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class SecurityController extends Controller
 {
@@ -38,5 +40,14 @@ class SecurityController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
 
         return back();
+    }
+
+    public function generateToken(Request $request): JsonResponse
+    {
+        $token = $request->user()->createToken('api-token');
+
+        return response()->json([
+            'token' => $token->plainTextToken,
+        ]);
     }
 }

@@ -39,7 +39,7 @@ class GenerateInvoicePdfJob implements ShouldQueue
             );
             throw_unless(
                 $this->invoice->update([
-                    'pdf_path' => Storage::url($path),
+                    'pdf_path' => $path,
                 ]),
                 \Exception::class,
                 'Failed to update invoice'

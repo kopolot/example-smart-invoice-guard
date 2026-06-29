@@ -7,9 +7,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\Invoice;
-use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 
-class InvoicePaid extends Notification
+class InvoiceSent extends Notification
 {
     use Queueable;
 
@@ -26,7 +26,7 @@ class InvoicePaid extends Notification
      *
      * @return array<int, string>
      */
-    public function via(User $notifiable): array
+    public function via(object $notifiable): array
     {
         return ['mail'];
     }
@@ -34,22 +34,10 @@ class InvoicePaid extends Notification
     /**
      * Get the mail representation of the notification.
      */
-    public function toMail(User $notifiable): MailMessage
+    public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->markdown('mail.invoice-paid', ['invoice' => $this->invoice])
-            ->attachFromStorageDisk('public', $this->invoice->pdf_path);
-    }
-
-    /**
-     * Get the array representation of the notification.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(User $notifiable): array
-    {
-        return [
-            'invoice' => $this->invoice,
-        ];
+            ->markdown('mail.invoice-sent', ['invoice' => $this->invoice])
+            ->attach(Storage::disk('public')->path($this->invoice->pdf_path));
     }
 }

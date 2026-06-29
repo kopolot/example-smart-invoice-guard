@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use App\Casts\EncryptedData;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 /**
  * @property int $id
@@ -25,12 +27,16 @@ use App\Casts\EncryptedData;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  * @property string|null $pdf_path
+ * @property string|null $pdf_url
+ * @property Carbon|null $sent_at
  */
-#[Fillable(['user_id', 'number', 'amount', 'date', 'tax_rate', 'tax_number', 'total_amount', 'status', 'pdf_path'])]
+#[Fillable(['user_id', 'number', 'amount', 'date', 'tax_rate', 'tax_number', 'total_amount', 'status', 'pdf_path', 'sent_at'])]
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */
     use HasFactory, SoftDeletes;
+
+    protected $appends = ['pdf_url'];
 
     public function user(): BelongsTo
     {
@@ -44,4 +50,12 @@ class Invoice extends Model
             'tax_number' => EncryptedData::class,
         ];
     }
+
+    protected function pdfUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn($value) => $this->pdf_path ? Storage::disk('public')->url($this->pdf_path) : null,
+        );
+    }
+
 }

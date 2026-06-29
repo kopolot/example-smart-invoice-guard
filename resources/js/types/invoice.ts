@@ -9,6 +9,8 @@ export type Invoice = {
     date: string;
     user_id: number;
     pdf_path: string | null;
+    pdf_url: string | null;
+    sent_at: string | null;
     created_at: string;
     updated_at: string;
     deleted_at: string | null;

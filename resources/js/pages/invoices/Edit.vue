@@ -34,10 +34,6 @@ defineOptions({
 });
 
 const invoiceRef = ref<Invoice>(props.invoice);
-// console.log(invoiceRef.value);
-// console.log(invoiceRef.value.tax_rate);
-// const taxRate = ref(invoiceRef.value.tax_rate * 100);
-// console.log(taxRate.value);
 
 </script>
 
@@ -98,9 +94,9 @@ const invoiceRef = ref<Invoice>(props.invoice);
                 </div>
             </div>
             <Button class="col-1 col-end-2" type="submit" :disabled="processing">Update Invoice</Button>
-            <Button class="col-2 col-end-3" type="button" @click="backToInvoices">
+            <Button class="col-2 col-end-3">
                 <a :href="show(invoice.id).url">
-                    Back to Invoices
+                    Back to Invoice
                 </a>
             </Button>
         </Form>

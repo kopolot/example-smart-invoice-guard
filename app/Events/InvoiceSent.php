@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use App\Models\Invoice;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -10,8 +9,9 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use App\Models\Invoice;
 
-class InvoicePdfGenerated implements ShouldBroadcast
+class InvoiceSent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -33,10 +33,5 @@ class InvoicePdfGenerated implements ShouldBroadcast
         return [
             new PrivateChannel('App.Models.User.' . $this->invoice->user_id),
         ];
-    }
-
-    public function broadcastWith(): array
-    {
-        return ['pdf_path' => $this->invoice->pdf_path, 'pdf_url' => $this->invoice->pdf_url];
     }
 }

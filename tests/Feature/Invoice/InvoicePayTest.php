@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Invoice;
 
 use App\Enums\InvoiceStatus;
 use App\Models\Invoice;

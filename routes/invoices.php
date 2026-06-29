@@ -15,7 +15,7 @@ Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::clas
         Route::delete('/{invoice:id}', 'deleteMethod')->can('delete', 'invoice')->name('delete');
         Route::put('/{invoice:id}', 'update')->can('update', 'invoice')->name('update');
         Route::get('/{invoice:id}/pdf', 'pdf')->can('view', 'invoice')->name('pdf');
-
+        Route::patch('/{invoice:id}/send', 'send')->can('view', 'invoice')->name('send');
     });
     Route::patch('/{invoice:id}/pay', 'pay')->middleware(EnsureRequestIsIdempotent::class)->name('pay');
     Route::get('/{invoice:id}/pay', 'payForm')->name('pay.form');

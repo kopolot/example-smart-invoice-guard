@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { index, show, edit, deleteMethod, pdf, pay } from '@/routes/invoices';
+import InputError from '@/components/InputError.vue';
+import { Input } from '@/components/ui/input';
+import { index, show, edit, deleteMethod, pdf, pay, send } from '@/routes/invoices';
 import type { Invoice } from '@/types/invoice';
 import { availableStatusesLabels } from '@/types/invoice';
-import { Form } from '@inertiajs/vue3';
+import { Form , useForm} from '@inertiajs/vue3';
 import { useEcho } from '@laravel/echo-vue';
 import axios from 'axios';
 import { ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+
 const props = defineProps<{
-    invoice: Invoice;
+    invoice: any;
 }>();
+
+console.log(props.invoice);
 
 const invoice = ref<Invoice>(props.invoice);
 
@@ -34,8 +39,21 @@ useEcho(
     'InvoicePdfGenerated',
     (event) => {
         invoice.value.pdf_path = event.pdf_path;
+        invoice.value.pdf_url = event.pdf_url;
     }
 )
+
+useEcho(
+    `App.Models.User.${invoice.value.user_id}`,
+    'InvoiceSent',
+    (event) => {
+        invoice.value.sent_at = event.sent_at;
+    }
+)
+
+const sendForm = useForm({
+    email: '',
+});
 
 const copyPaymentLink = () => {
     const paymentLink = new URL(pay(invoice.value.id).url, window.location.origin);
@@ -54,7 +72,21 @@ const generatePdf = async () => {
         toast.error('Failed to generate PDF');
     }
 };
-console.log(invoice.value);
+
+const sendInvoice = async () => {
+    try {
+        const uri = send(invoice.value.id).url;
+        const url = new URL(uri, window.location.origin);
+        const response = await axios.patch(
+            url.toString(),
+            sendForm.data()
+        )
+        toast.success(response.data.message);
+    } catch (error) {
+        console.error(error);
+        toast.error('Failed to send invoice');
+    }
+};
 </script>
 
 <template>
@@ -104,7 +136,7 @@ console.log(invoice.value);
             </div>
         </div>
     </div>
-    <div class="p-5 flex flex-row gap-2">
+    <div class="p-5 flex flex-row gap-2 flex-wrap">
         <Button class="bg-blue-500 text-white px-5 py-1 rounded" >
             <a :href="edit(invoice.id).url">Edit</a>
         </Button>
@@ -119,13 +151,25 @@ console.log(invoice.value);
         <Button class="bg-yellow-500 text-white px-5 py-1 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" :disabled="invoice.pdf_path !== null && invoice.pdf_path !== ''" @click="generatePdf" >
             Generate PDF
         </Button>
+        <div class="flex flex-row gap-2 w-100" v-if="invoice.pdf_path !== null && invoice.pdf_path !== ''">
+            <Form v-slot="{ errors, processing }" @submit.prevent="sendInvoice" class="flex flex-row gap-2 flex-wrap">
+                <Input required v-model="sendForm.email" :disabled="invoice.sent_at !== null || processing" type="email" name="email" placeholder="Email" />
+                <InputError :message="errors.email" />
+                <Button
+                    :disabled="invoice.sent_at !== null || processing"
+                    class="bg-purple-500 text-white px-5 py-1 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Send Invoice
+                </Button>
+            </Form>
+        </div>
     </div>
-    <div class="p-5" v-if="invoice.pdf_path">
+    <div class="p-5" v-if="invoice.pdf_url">
         <Label>PDF</Label>
         <div class="flex flex-row border-b border-gray-200 pb-4 gap-2">
-            <iframe :src="invoice.pdf_path" frameborder="0" class="w-full h-full min-h-[500px]"/>
+            <iframe :src="invoice.pdf_url" frameborder="0" class="w-full h-full min-h-[500px]"/>
         </div>
-        <a class="text-blue-500" :href="invoice.pdf_path" target="_blank">Download PDF</a>
+        <a class="text-blue-500" :href="invoice.pdf_url" target="_blank">Download PDF</a>
     </div>
 </template>
 

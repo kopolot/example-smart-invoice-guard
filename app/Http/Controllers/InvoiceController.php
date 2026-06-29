@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Services\InvoicePriceCalculator;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use App\Jobs\SendInvoiceEmail;
 
 class InvoiceController extends Controller
 {
@@ -146,5 +147,17 @@ class InvoiceController extends Controller
             'invoice' => $invoice,
             'idempotencyKey' => "invoice_pay:" . $invoice->id,
         ]);
+    }
+
+    public function send(Invoice $invoice)
+    {
+        if (!request()->has('email')) {
+            return response()->json(['message' => __('Email is required.')], 422);
+        }
+        if ($invoice->sent_at) {
+            return response()->json(['message' => __('Invoice already sent.')]);
+        }
+        SendInvoiceEmail::dispatch($invoice, request()->input('email'));
+        return response()->json(['message' => __('Invoice will be sent in a few seconds.')]);
     }
 }

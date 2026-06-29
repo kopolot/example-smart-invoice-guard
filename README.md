@@ -197,7 +197,7 @@ Odpowiedź:
 Token API można wygenerować przez Tinkera:
 
 ```bash
-php artisan tinker --execute 'App\Models\User::first()->createToken("demo")->plainTextToken;'
+php artisan tinker --execute 'echo App\Models\User::first()->createToken("demo")->plainTextToken;'
 ```
 
 ---
@@ -211,7 +211,7 @@ Komenda importuje faktury strumieniowo (stałe zużycie pamięci) i zapisuje bat
 php artisan app:create-test-invoice-import 1000
 
 # 2. Zaimportuj (URL do pliku w storage/app/public, rozmiar batcha opcjonalny)
-php artisan app:import-invoices "http://localhost:8080/storage/test_invoices.csv" 100
+php artisan app:import-invoices "https://httpd:8443/storage/test_invoices.csv" 100
 ```
 
 NIP jest szyfrowany przed zapisem, identycznie jak przez cast modelu.
@@ -222,13 +222,7 @@ NIP jest szyfrowany przed zapisem, identycznie jak przez cast modelu.
 
 ```bash
 php artisan test --compact          # testy (PHPUnit, baza SQLite in-memory)
-vendor/bin/pint                     # formatowanie PHP
-vendor/bin/phpstan analyse          # analiza statyczna (Larastan)
-npm run lint && npm run format      # ESLint + Prettier
-composer ci:check                   # pełny pipeline jak w CI
 ```
-
-Testy funkcjonalne pokrywają m.in. autoryzację, rejestrację, 2FA, tworzenie/płatność/wysyłkę faktur. Środowisko testowe używa SQLite `:memory:`, kolejek `sync` i sterownika maili `array`.
 
 ---
 

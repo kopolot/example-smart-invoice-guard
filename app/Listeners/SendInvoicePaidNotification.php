@@ -20,6 +20,8 @@ class SendInvoicePaidNotification
      */
     public function handle(InvoicePaid $event): void
     {
-        $event->getInvoice()->user->notify(new InvoicePaidNotification($event->getInvoice()));
+        if ($event->getInvoice()->pdf_path) {
+            $event->getInvoice()->user->notify(new InvoicePaidNotification($event->getInvoice()));
+        }
     }
 }

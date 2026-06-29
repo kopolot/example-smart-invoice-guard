@@ -152,16 +152,16 @@ const sendInvoice = async () => {
             Generate PDF
         </Button>
         <div class="flex flex-row gap-2 w-100" v-if="invoice.pdf_path !== null && invoice.pdf_path !== ''">
-            <Form v-slot="{ errors, processing }" @submit.prevent="sendInvoice" class="flex flex-row gap-2 flex-wrap">
-                <Input required v-model="sendForm.email" :disabled="invoice.sent_at !== null || processing" type="email" name="email" placeholder="Email" />
-                <InputError :message="errors.email" />
+            <form  @submit.prevent="sendInvoice" class="flex flex-row gap-2 flex-wrap">
+                <Input required v-model="sendForm.email" :disabled="invoice.sent_at !== null || sendForm.processing" type="email" name="email" placeholder="Email" />
+                <InputError :message="sendForm.errors.email" />
                 <Button
-                    :disabled="invoice.sent_at !== null || processing"
+                    :disabled="invoice.sent_at !== null || sendForm.processing"
                     class="bg-purple-500 text-white px-5 py-1 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     Send Invoice
                 </Button>
-            </Form>
+            </form>
         </div>
     </div>
     <div class="p-5" v-if="invoice.pdf_url">

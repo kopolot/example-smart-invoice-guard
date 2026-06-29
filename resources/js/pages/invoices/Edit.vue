@@ -41,7 +41,7 @@ const invoiceRef = ref<Invoice>(props.invoice);
     <Head :title="`Edit Invoice ${invoice.number}`" />
     <div class="flex flex-col space-y-6 p-4">
         <h1>Edit Invoice {{ invoice.number }}</h1>
-        <Form class="grid grid-cols-2 gap-2" :action="update(invoice.id).url" v-slot="{ errors, processing }" method="post">
+        <Form class="grid grid-cols-2 gap-2" v-bind="update.form(invoice.id)" v-slot="{ errors, processing }">
             <div class="row grid grid-cols-3">
                 <Label class="col" for="number">Number</Label>
                 <div class="col-2 col-end-4">

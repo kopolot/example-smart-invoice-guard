@@ -4,6 +4,8 @@ namespace App\Listeners;
 
 use App\Enums\InvoiceStatus;
 use App\Events\InvoicePaid;
+use Illuminate\Support\Facades\DB;
+use App\Models\Invoice;
 
 class UpdateInvoiceStatus
 {
@@ -20,8 +22,16 @@ class UpdateInvoiceStatus
      */
     public function handle(InvoicePaid $event): void
     {
-        $event->getInvoice()->update([
-            'status' => InvoiceStatus::PAID,
-        ]);
+        DB::transaction(function () use ($event) {
+            $invoice = Invoice::lockForUpdate()->findOrFail($event->getInvoice()->id);
+
+            if ($invoice->status->value === InvoiceStatus::PAID->value) {
+                return;
+            }
+
+            $invoice->update([
+                'status' => InvoiceStatus::PAID,
+            ]);
+        });
     }
 }

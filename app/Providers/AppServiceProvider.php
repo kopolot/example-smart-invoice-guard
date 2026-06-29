@@ -10,6 +10,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Http\Request;
 use Illuminate\Cache\RateLimiting\Limit;
+use App\Observers\InvoiceObserver;
+use App\Models\Invoice;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -41,6 +43,8 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute($userId ? 60 : 5)
                 ->by($userId ?: $request->ip());
         });
+
+        Invoice::observe(InvoiceObserver::class);
     }
 
     /**

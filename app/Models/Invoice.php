@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
 use App\Casts\EncryptedData;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Invoice\StatusHistory;
 
 /**
  * @property int $id
@@ -58,4 +60,8 @@ class Invoice extends Model
         );
     }
 
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(StatusHistory::class);
+    }
 }

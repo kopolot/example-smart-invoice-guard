@@ -92,19 +92,19 @@ utworzenie ──► Observer zapisuje pierwszy wpis w status_histories
 # 1. Zbuduj i wystartuj kontenery
 docker compose up -d --build
 
-# 2. Wejdź do kontenera PHP
-docker compose exec php bash
+bin/bash
 
 # 3. Wewnątrz kontenera – pełny setup
 cp .env.example .env
 composer install
 php artisan key:generate
+php artisan storage:link
 php artisan migrate
 npm install
 npm run build
 
 # 4. Worker kolejki (osobny terminal w kontenerze)
-php artisan queue:work
+php artisan queue:work & php artisan reverb:start &
 ```
 
 Po starcie:

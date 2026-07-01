@@ -7,6 +7,10 @@ import { store, create, index } from '@/routes/invoices';
 import { availableStatusesLabels } from '@/types/invoice';
 import { Form, Head } from '@inertiajs/vue3';
 
+const props = defineProps<{
+    idempotencyKey: string;
+}>();
+
 defineOptions({
     layout: {
         breadcrumbs: [
@@ -27,7 +31,12 @@ defineOptions({
     <Head title="Create Invoice" />
     <div class="flex flex-col space-y-6 p-4">
         <h1>Create Invoice</h1>
-        <Form class="grid grid-cols-2 gap-2" :action="store.post().url" v-slot="{ errors, processing }" method="post">
+        <Form
+            v-bind="store.form()"
+            class="grid grid-cols-2 gap-2"
+            v-slot="{ errors, processing }"
+            :headers="{ 'X-Idempotency-Key': props.idempotencyKey }"
+        >
             <div class="row grid grid-cols-3">
                 <Label class="col" for="number">Number</Label>
                 <div class="col-2 col-end-4">

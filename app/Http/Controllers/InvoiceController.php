@@ -42,7 +42,7 @@ class InvoiceController extends Controller
      */
     public function create()
     {
-        return Inertia::render('invoices/Create');
+        return Inertia::render('invoices/Create', ['idempotencyKey' => Str::uuid()]);
     }
 
     /**
@@ -145,7 +145,6 @@ class InvoiceController extends Controller
     {
         return Inertia::render('invoices/PayForm', [
             'invoice' => $invoice,
-            'idempotencyKey' => "invoice_pay:" . $invoice->id,
         ]);
     }
 

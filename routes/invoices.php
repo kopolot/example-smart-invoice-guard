@@ -10,13 +10,13 @@ Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::clas
         Route::get('/', 'index')->name('index');
         Route::get('/create', 'create')->can('create', Invoice::class)->name('create');
         Route::get('/{invoice:id}', 'show')->can('view', 'invoice')->name('show');
-        Route::post('/store', 'store')->can('create', Invoice::class)->name('store');
+        Route::post('/store', 'store')->middleware(EnsureRequestIsIdempotent::class)->can('create', Invoice::class)->name('store');
         Route::get('/{invoice:id}/edit', 'edit')->can('update', 'invoice')->name('edit');
         Route::delete('/{invoice:id}', 'deleteMethod')->can('delete', 'invoice')->name('delete');
         Route::put('/{invoice:id}', 'update')->can('update', 'invoice')->name('update');
         Route::get('/{invoice:id}/pdf', 'pdf')->can('view', 'invoice')->name('pdf');
         Route::patch('/{invoice:id}/send', 'send')->can('view', 'invoice')->name('send');
     });
-    Route::patch('/{invoice:id}/pay', 'pay')->middleware(EnsureRequestIsIdempotent::class)->name('pay');
+    Route::patch('/{invoice:id}/pay', 'pay')->name('pay');
     Route::get('/{invoice:id}/pay', 'payForm')->name('pay.form');
 });

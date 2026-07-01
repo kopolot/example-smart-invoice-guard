@@ -22,7 +22,6 @@ defineOptions({
 
 const props = defineProps<{
     invoice: Invoice;
-    idempotencyKey: string;
 }>();
 </script>
 
@@ -32,9 +31,7 @@ const props = defineProps<{
     <div class="flex flex-col space-y-6 p-4">
         <h2 class="text-2xl font-bold">Pay Invoice simulation</h2>
         <Form
-            :action="pay.patch(props.invoice.id).url"
-            method="patch"
-            :headers="{ 'X-Idempotency-Key': props.idempotencyKey }"
+            v-bind="pay.form(props.invoice.id)"
             v-slot="{ processing }"
         >
             <div class="space-y-6 p-10">

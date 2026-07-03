@@ -15,6 +15,10 @@ class EncryptedData implements CastsAttributes
      */
     public function get(Model $model, string $key, mixed $value, array $attributes): mixed
     {
+        if ($value === null) {
+            return null;
+        }
+
         return Crypt::decryptString($value);
     }
 
@@ -25,6 +29,10 @@ class EncryptedData implements CastsAttributes
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): mixed
     {
+        if ($value === null) {
+            return null;
+        }
+
         return Crypt::encryptString($value);
     }
 }

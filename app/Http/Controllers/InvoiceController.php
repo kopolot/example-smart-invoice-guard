@@ -3,20 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Events\InvoicePaid;
+use App\Http\Requests\SendInvoiceRequest;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
 use App\Jobs\GenerateInvoicePdfJob;
+use App\Jobs\SendInvoiceEmail;
 use App\Models\Invoice;
 use App\Services\InvoicePriceCalculator;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
-use App\Jobs\SendInvoiceEmail;
 
 class InvoiceController extends Controller
 {
-    public function __construct(private InvoicePriceCalculator $invoicePriceCalculator)
-    {
-    }
+    public function __construct(private InvoicePriceCalculator $invoicePriceCalculator) {}
 
     /**
      * Display a listing of the resource.
@@ -26,12 +25,13 @@ class InvoiceController extends Controller
         $perPage = 10;
         $page = request()->input('page', 1);
         // if is ajax request and no inertia request, return the invoices
-        if (request()->ajax() && !request()->inertia()) {
+        if (request()->ajax() && ! request()->inertia()) {
             return response()->json([
                 'invoicesPagination' => auth()->user()->invoices()->paginate($perPage, page: $page),
             ]);
         }
         $invoices = auth()->user()->invoices()->paginate($perPage, page: $page);
+
         return Inertia::render('invoices/Index', [
             'invoicesPagination' => $invoices,
         ]);
@@ -148,15 +148,14 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function send(Invoice $invoice)
+    public function send(SendInvoiceRequest $request, Invoice $invoice)
     {
-        if (!request()->has('email')) {
-            return response()->json(['message' => __('Email is required.')], 422);
-        }
         if ($invoice->sent_at) {
             return response()->json(['message' => __('Invoice already sent.')]);
         }
-        SendInvoiceEmail::dispatch($invoice, request()->input('email'));
+
+        SendInvoiceEmail::dispatch($invoice, $request->validated('email'));
+
         return response()->json(['message' => __('Invoice will be sent in a few seconds.')]);
     }
 }

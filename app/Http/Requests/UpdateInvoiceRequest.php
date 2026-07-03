@@ -25,12 +25,12 @@ class UpdateInvoiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'number' => ['required', 'string', Rule::unique('invoices', 'number')->ignore($this->invoice->id, 'id')],
+            'number' => ['required', 'string', Rule::unique('invoices', 'number')->where('user_id', $this->user()->id)->ignore($this->invoice->id, 'id')],
             'amount' => 'required|numeric|min:0',
             'tax_rate' => 'required|numeric|min:0',
             'tax_number' => 'required|string',
             'date' => 'required|date',
-            'status' => 'required|in:' . implode(',', array_column(InvoiceStatus::cases(), 'value')),
+            'status' => 'required|in:'.implode(',', array_column(InvoiceStatus::cases(), 'value')),
         ];
     }
 }

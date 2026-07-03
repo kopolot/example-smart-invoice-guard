@@ -3,12 +3,10 @@
 namespace Tests\Feature\Invoice;
 
 use App\Enums\InvoiceStatus;
-use Illuminate\Support\Facades\Mail;
 use App\Models\Invoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class InvoicePayTest extends TestCase
@@ -35,53 +33,20 @@ class InvoicePayTest extends TestCase
 
         $response->assertOk();
         $response->assertInertia(
-            fn($page) => $page
+            fn ($page) => $page
                 ->component('invoices/PayForm')
-                ->has('idempotencyKey')
+                ->has('invoice')
         );
     }
 
-    public function test_pay_requires_idempotency_key(): void
+    public function test_guests_can_pay_invoice(): void
     {
         $invoice = $this->createUnpaidInvoice();
 
-        $response = $this->from(route('invoices.pay.form', $invoice))
-            ->patch(route('invoices.pay', $invoice), []);
-
-        $response->assertUnprocessable()
-            ->assertJsonPath('error', __('Idempotency key is required.'));
-    }
-
-    public function test_guests_can_pay_invoice_with_idempotency_key(): void
-    {
-        $invoice = $this->createUnpaidInvoice();
-
-        $idempotencyKey = "invoice_pay:" . $invoice->id;
-
-        $response = $this->patch(route('invoices.pay', $invoice), [], [
-            'X-Idempotency-Key' => $idempotencyKey,
-        ]);
+        $response = $this->patch(route('invoices.pay', $invoice));
 
         $response->assertRedirect(route('home'));
         $this->assertSame(InvoiceStatus::PAID, $invoice->fresh()->status);
-        $this->assertTrue(Cache::has("idempotency_key:{$idempotencyKey}"));
-    }
-
-    public function test_duplicate_pay_request_with_same_key_is_rejected(): void
-    {
-        $invoice = $this->createUnpaidInvoice();
-
-        $idempotencyKey = "invoice_pay:" . $invoice->id;
-        $headers = ['X-Idempotency-Key' => $idempotencyKey];
-
-        $firstResponse = $this->patch(route('invoices.pay', $invoice), [], $headers);
-        $firstResponse->assertRedirect(route('home'));
-
-        $secondResponse = $this->patch(route('invoices.pay', $invoice), [], $headers);
-
-        $secondResponse->assertUnprocessable()
-            ->assertJsonPath('error', __('Request already processed or processing.'));
-        $this->assertTrue(Cache::has("idempotency_key:{$idempotencyKey}"));
     }
 
     public function test_paid_invoice_cannot_be_paid_again(): void
@@ -92,12 +57,10 @@ class InvoicePayTest extends TestCase
             'status' => InvoiceStatus::PAID,
         ]);
 
-        $response = $this->patch(route('invoices.pay', $invoice), [], [
-            'X-Idempotency-Key' => (string) Str::uuid(),
-        ]);
+        $response = $this->patch(route('invoices.pay', $invoice));
 
         $response->assertRedirect(route('invoices.show', $invoice));
-        $response->assertSessionHas('inertia.flash_data', fn(array $flash) => $flash['toast'] === [
+        $response->assertSessionHas('inertia.flash_data', fn (array $flash) => $flash['toast'] === [
             'type' => 'error',
             'message' => 'Invoice already paid.',
         ]);
@@ -112,9 +75,7 @@ class InvoicePayTest extends TestCase
             'status' => InvoiceStatus::UNPAID,
         ]);
 
-        $response = $this->actingAs($user)->patch(route('invoices.pay', $invoice), [], [
-            'X-Idempotency-Key' => "invoice_pay:" . $invoice->id,
-        ]);
+        $response = $this->actingAs($user)->patch(route('invoices.pay', $invoice));
 
         $response->assertRedirect(route('home'));
         $this->assertSame(InvoiceStatus::PAID, $invoice->fresh()->status);

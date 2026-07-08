@@ -141,7 +141,7 @@ class InvoiceController extends Controller
         return redirect(route('home'));
     }
 
-    public function payForm(Invoice $invoice)
+    public function showPayForm(Invoice $invoice)
     {
         return Inertia::render('invoices/PayForm', [
             'invoice' => $invoice,

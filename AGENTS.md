@@ -55,6 +55,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 ## Preferred Container Command Patterns
 
 - Prefer `docker compose exec php ...` for PHP / Composer / Artisan work.
+- Laravel Boost MCP in Cursor runs through `.cursor/boost-mcp.sh`, which executes `boost:mcp` inside the `php` container. Keep the Docker stack running before using Boost MCP tools.
 - Prefer `docker compose exec php npm ...` for frontend package scripts when working inside the application container.
 - Use `docker compose up -d --build` to build and start the local stack.
 - Use `docker compose ps` to inspect service state.

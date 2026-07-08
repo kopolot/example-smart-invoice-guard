@@ -1,7 +1,20 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
-import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
+import DashboardHero from '@/components/dashboard/DashboardHero.vue';
+import DashboardMetricCards from '@/components/dashboard/DashboardMetricCards.vue';
+import DashboardQuickSummary from '@/components/dashboard/DashboardQuickSummary.vue';
+import DashboardRecentActivity from '@/components/dashboard/DashboardRecentActivity.vue';
+import DashboardRevenueChart from '@/components/dashboard/DashboardRevenueChart.vue';
+import DashboardStatusBreakdown from '@/components/dashboard/DashboardStatusBreakdown.vue';
 import { dashboard } from '@/routes';
+import type { DashboardSummary, MonthlyRevenueItem, RecentActivityItem, StatusBreakdownItem } from '@/types';
+import { Head } from '@inertiajs/vue3';
+
+const props = defineProps<{
+    summary: DashboardSummary;
+    statusBreakdown: StatusBreakdownItem[];
+    monthlyRevenue: MonthlyRevenueItem[];
+    recentActivity: RecentActivityItem[];
+}>();
 
 defineOptions({
     layout: {
@@ -18,30 +31,19 @@ defineOptions({
 <template>
     <Head title="Dashboard" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-            <div
-                class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
-            </div>
-        </div>
-        <div
-            class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border"
-        >
-            <PlaceholderPattern />
-        </div>
+    <div class="flex flex-1 flex-col gap-6 p-4">
+        <DashboardHero />
+
+        <DashboardMetricCards :summary="summary" />
+
+        <section class="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+            <DashboardRevenueChart :monthly-revenue="monthlyRevenue" />
+            <DashboardStatusBreakdown :status-breakdown="statusBreakdown" />
+        </section>
+
+        <section class="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+            <DashboardRecentActivity :recent-activity="recentActivity" />
+            <DashboardQuickSummary :summary="summary" />
+        </section>
     </div>
 </template>

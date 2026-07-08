@@ -29,3 +29,7 @@ yarn-error.log
 /.zed
 composer.lock
 package-lock.json
+/test-results
+/playwright-report
+/blob-report
+/tests/e2e/.auth

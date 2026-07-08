@@ -2,137 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\InvoiceStatus;
-use App\Models\Invoice\StatusHistory;
-use App\Models\User;
+use App\Services\DashboardStatsService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    public function __construct(private DashboardStatsService $dashboardStatsService) {}
+
     public function __invoke(Request $request): Response
     {
-        /** @var User $user */
-        $user = $request->user();
-
-        return Inertia::render('Dashboard', [
-            'summary' => $this->summary($user),
-            'statusBreakdown' => $this->statusBreakdown($user),
-            'monthlyRevenue' => $this->monthlyRevenue($user),
-            'recentActivity' => $this->recentActivity($user),
-        ]);
-    }
-
-    /**
-     * @return array{
-     *     totalInvoices: int,
-     *     collectedRevenue: float,
-     *     outstandingRevenue: float,
-     *     sentInvoices: int,
-     *     averageInvoiceValue: float
-     * }
-     */
-    private function summary(User $user): array
-    {
-        $summary = $user->invoices()
-            ->selectRaw('count(*) as total_invoices')
-            ->selectRaw(
-                'coalesce(sum(case when status = ? then total_amount else 0 end), 0) as collected_revenue',
-                [InvoiceStatus::PAID->value],
-            )
-            ->selectRaw(
-                'coalesce(sum(case when status in (?, ?) then total_amount else 0 end), 0) as outstanding_revenue',
-                [InvoiceStatus::UNPAID->value, InvoiceStatus::PARTIALLY_PAID->value],
-            )
-            ->selectRaw('count(case when sent_at is not null then 1 end) as sent_invoices')
-            ->selectRaw('coalesce(avg(total_amount), 0) as average_invoice_value')
-            ->first();
-
-        return [
-            'totalInvoices' => (int) ($summary?->total_invoices ?? 0),
-            'collectedRevenue' => (float) ($summary?->collected_revenue ?? 0),
-            'outstandingRevenue' => (float) ($summary?->outstanding_revenue ?? 0),
-            'sentInvoices' => (int) ($summary?->sent_invoices ?? 0),
-            'averageInvoiceValue' => round((float) ($summary?->average_invoice_value ?? 0), 2),
-        ];
-    }
-
-    /**
-     * @return array<int, array{status: string, label: string, count: int}>
-     */
-    private function statusBreakdown(User $user): array
-    {
-        $counts = $user->invoices()
-            ->selectRaw('status, count(*) as aggregate')
-            ->groupBy('status')
-            ->pluck('aggregate', 'status');
-
-        return collect(InvoiceStatus::cases())
-            ->map(fn (InvoiceStatus $status): array => [
-                'status' => $status->value,
-                'label' => str($status->value)->replace('_', ' ')->title()->value(),
-                'count' => (int) ($counts[$status->value] ?? 0),
-            ])
-            ->all();
-    }
-
-    /**
-     * @return array<int, array{month: string, label: string, revenue: float, invoices: int}>
-     */
-    private function monthlyRevenue(User $user): array
-    {
-        $startMonth = now()->startOfMonth()->subMonths(5);
-        $endMonth = now()->endOfMonth();
-        $monthExpression = $this->monthExpression();
-
-        $aggregates = $user->invoices()
-            ->selectRaw("{$monthExpression} as month")
-            ->selectRaw('coalesce(sum(total_amount), 0) as revenue')
-            ->selectRaw('count(*) as invoices')
-            ->whereBetween(DB::raw('coalesce(date, created_at)'), [$startMonth->toDateString(), $endMonth->toDateTimeString()])
-            ->groupBy(DB::raw($monthExpression))
-            ->get()
-            ->keyBy('month');
-
-        return collect(range(5, 0, -1))
-            ->map(fn (int $offset) => now()->startOfMonth()->subMonths($offset))
-            ->push(now()->startOfMonth())
-            ->map(fn ($month): array => [
-                'month' => $month->format('Y-m'),
-                'label' => $month->format('M'),
-                'revenue' => round((float) ($aggregates->get($month->format('Y-m'))?->revenue ?? 0), 2),
-                'invoices' => (int) ($aggregates->get($month->format('Y-m'))?->invoices ?? 0),
-            ])
-            ->all();
-    }
-
-    private function monthExpression(): string
-    {
-        return match (DB::connection()->getDriverName()) {
-            'sqlite' => "strftime('%Y-%m', coalesce(date, created_at))",
-            default => "date_format(coalesce(date, created_at), '%Y-%m')",
-        };
-    }
-
-    /**
-     * @return array<int, array{invoiceNumber: string, status: string, changedAt: string}>
-     */
-    private function recentActivity(User $user): array
-    {
-        return StatusHistory::query()
-            ->select('invoice_status_histories.status', 'invoice_status_histories.created_at', 'invoices.number as invoice_number')
-            ->join('invoices', 'invoices.id', '=', 'invoice_status_histories.invoice_id')
-            ->where('invoices.user_id', $user->id)
-            ->latest('invoice_status_histories.created_at')
-            ->limit(8)
-            ->get()
-            ->map(fn (StatusHistory $history): array => [
-                'invoiceNumber' => $history->invoice_number,
-                'status' => str($history->status)->replace('_', ' ')->title()->value(),
-                'changedAt' => $history->created_at->toISOString(),
-            ])
-            ->all();
+        return Inertia::render('Dashboard', $this->dashboardStatsService->forUser($request->user()));
     }
 }

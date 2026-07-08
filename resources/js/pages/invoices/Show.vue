@@ -135,6 +135,12 @@ const sendInvoice = async () => {
                 <p>{{ invoice.date }}</p>
             </div>
         </div>
+        <div class="flex flex-row border-b border-gray-200 pb-4 gap-2">
+            <Label>Due date</Label>
+            <div class="">
+                <p>{{ invoice.due_date }}</p>
+            </div>
+        </div>
     </div>
     <div class="p-5 flex flex-row gap-2 flex-wrap">
         <Button class="bg-blue-500 text-white px-5 py-1 rounded" >

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { DashboardSummary } from '@/types';
+import type { DashboardOverdue, DashboardSummary } from '@/types';
 
 const props = defineProps<{
     summary: DashboardSummary;
+    overdue: DashboardOverdue;
 }>();
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
@@ -33,8 +34,14 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
                 while open balance still totals
                 <span class="font-medium text-foreground"> {{ currencyFormatter.format(props.summary.outstandingRevenue) }} </span>.
             </p>
-            <p>
-                Use this view as the base for the next portfolio step: overdue reminders, partial payment history, or realtime updates after payment events.
+            <p v-if="props.overdue.count > 0">
+                <span class="font-medium text-foreground"> {{ props.overdue.count }} </span>
+                invoice(s) are overdue, representing
+                <span class="font-medium text-foreground"> {{ currencyFormatter.format(props.overdue.revenue) }} </span>
+                that needs follow-up.
+            </p>
+            <p v-else>
+                No invoices are currently overdue. Scheduled reminders will notify you when due dates are missed.
             </p>
         </CardContent>
     </Card>

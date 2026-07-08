@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class InvoiceFactory extends Factory
 {
-
     protected static $userIDs = [];
 
     /**
@@ -28,18 +27,21 @@ class InvoiceFactory extends Factory
         $fake_status = fake()->randomElement(InvoiceStatus::cases());
         $random_user_id = fake()->randomElement(static::$userIDs);
 
+        $fake_date = fake()->dateTimeBetween('-3 months', 'now');
+        $fake_due_date = (clone $fake_date)->modify('+'.fake()->numberBetween(7, 45).' days');
+
         return [
-            'number' => fake()/*->unique()*/ ->numerify('INV-##########'),
+            'number' => fake()/* ->unique() */ ->numerify('INV-##########'),
             'amount' => $fake_amount,
             'tax_rate' => $fake_tax_rate,
             'total_amount' => $fake_total_amount,
             'tax_number' => fake()->numerify('##########'),
             'status' => $fake_status,
-            'date' => fake()->date(),
+            'date' => $fake_date->format('Y-m-d'),
+            'due_date' => $fake_due_date->format('Y-m-d'),
             'user_id' => $random_user_id,
         ];
     }
-
 
     public function configure(): static
     {
@@ -49,6 +51,7 @@ class InvoiceFactory extends Factory
             ->get()
             ->pluck('id')
             ->toArray();
+
         return $this;
     }
 }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DashboardOverdueAlert from '@/components/dashboard/DashboardOverdueAlert.vue';
 import DashboardHero from '@/components/dashboard/DashboardHero.vue';
 import DashboardMetricCards from '@/components/dashboard/DashboardMetricCards.vue';
 import DashboardQuickSummary from '@/components/dashboard/DashboardQuickSummary.vue';
@@ -6,11 +7,12 @@ import DashboardRecentActivity from '@/components/dashboard/DashboardRecentActiv
 import DashboardRevenueChart from '@/components/dashboard/DashboardRevenueChart.vue';
 import DashboardStatusBreakdown from '@/components/dashboard/DashboardStatusBreakdown.vue';
 import { dashboard } from '@/routes';
-import type { DashboardSummary, MonthlyRevenueItem, RecentActivityItem, StatusBreakdownItem } from '@/types';
+import type { DashboardOverdue, DashboardSummary, MonthlyRevenueItem, RecentActivityItem, StatusBreakdownItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 
 const props = defineProps<{
     summary: DashboardSummary;
+    overdue: DashboardOverdue;
     statusBreakdown: StatusBreakdownItem[];
     monthlyRevenue: MonthlyRevenueItem[];
     recentActivity: RecentActivityItem[];
@@ -34,6 +36,8 @@ defineOptions({
     <div class="flex flex-1 flex-col gap-6 p-4">
         <DashboardHero />
 
+        <DashboardOverdueAlert :overdue="overdue" />
+
         <DashboardMetricCards :summary="summary" />
 
         <section class="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
@@ -43,7 +47,7 @@ defineOptions({
 
         <section class="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
             <DashboardRecentActivity :recent-activity="recentActivity" />
-            <DashboardQuickSummary :summary="summary" />
+            <DashboardQuickSummary :summary="summary" :overdue="overdue" />
         </section>
     </div>
 </template>

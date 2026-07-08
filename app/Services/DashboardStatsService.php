@@ -27,6 +27,7 @@ class DashboardStatsService
     {
         return [
             'summary' => $this->summary($user),
+            'overdue' => $this->overdue($user),
             'statusBreakdown' => $this->statusBreakdown($user),
             'monthlyRevenue' => $this->monthlyRevenue($user),
             'recentActivity' => $this->recentActivity($user),
@@ -51,8 +52,8 @@ class DashboardStatsService
                 [InvoiceStatus::PAID->value],
             )
             ->selectRaw(
-                'coalesce(sum(case when status in (?, ?) then total_amount else 0 end), 0) as outstanding_revenue',
-                [InvoiceStatus::UNPAID->value, InvoiceStatus::PARTIALLY_PAID->value],
+                'coalesce(sum(case when status in (?, ?, ?) then total_amount else 0 end), 0) as outstanding_revenue',
+                InvoiceStatus::openValues(),
             )
             ->selectRaw('count(case when sent_at is not null then 1 end) as sent_invoices')
             ->selectRaw('coalesce(avg(total_amount), 0) as average_invoice_value')
@@ -64,6 +65,23 @@ class DashboardStatsService
             'outstandingRevenue' => (float) ($summary?->outstanding_revenue ?? 0),
             'sentInvoices' => (int) ($summary?->sent_invoices ?? 0),
             'averageInvoiceValue' => round((float) ($summary?->average_invoice_value ?? 0), 2),
+        ];
+    }
+
+    /**
+     * @return array{count: int, revenue: float}
+     */
+    private function overdue(User $user): array
+    {
+        $overdue = $user->invoices()
+            ->where('status', InvoiceStatus::OVERDUE)
+            ->selectRaw('count(*) as overdue_count')
+            ->selectRaw('coalesce(sum(total_amount), 0) as overdue_revenue')
+            ->first();
+
+        return [
+            'count' => (int) ($overdue?->overdue_count ?? 0),
+            'revenue' => round((float) ($overdue?->overdue_revenue ?? 0), 2),
         ];
     }
 

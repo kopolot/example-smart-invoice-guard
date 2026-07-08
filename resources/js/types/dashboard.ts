@@ -6,8 +6,13 @@ export type DashboardSummary = {
     averageInvoiceValue: number;
 };
 
+export type DashboardOverdue = {
+    count: number;
+    revenue: number;
+};
+
 export type StatusBreakdownItem = {
-    status: 'paid' | 'unpaid' | 'partially_paid';
+    status: 'paid' | 'unpaid' | 'partially_paid' | 'overdue';
     label: string;
     count: number;
 };

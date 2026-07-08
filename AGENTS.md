@@ -256,3 +256,30 @@ Vue components must have a single root element.
 - IMPORTANT: Activate `inertia-vue-development` when working with Inertia Vue client-side patterns.
 
 </laravel-boost-guidelines>
+
+## Cursor Cloud specific instructions
+
+This environment runs the app via the repo's Docker Compose stack (see the "Local Runtime & Containers" section above for services/ports). The following are non-obvious startup/run caveats discovered while setting up the cloud VM. Standard commands live in `compose.yaml`, `composer.json`, `package.json`, and the README — reference those rather than duplicating.
+
+### Starting things up (not handled by the update script)
+- Docker requires `sudo` here, and the daemon is not auto-started. Start it once per VM boot in a persistent shell (e.g. tmux): `sudo dockerd`. The daemon config at `/etc/docker/daemon.json` is already set for this VM (Docker 29 needs `storage-driver: fuse-overlayfs` **and** `features.containerd-snapshotter: false`; iptables is set to `iptables-legacy`).
+- Bring up the stack with `sudo docker compose up -d` (images are already built in the VM snapshot, so this is fast; use `--build` only after changing anything under `docker/`).
+- App code, `vendor/`, `node_modules/`, `public/build/`, and `.env` live on the host via the bind mount, so they persist across VM restarts — you normally do NOT need to reinstall dependencies.
+
+### PHP / Composer gotcha (important)
+- Inside the `php` container there are two PHP binaries. `/usr/local/bin/php` (the official image PHP, used by `php artisan` and `vendor/bin/*`) has all required extensions. The `composer` wrapper, however, calls the apk `php85` build which is **missing `session` and `tokenizer`**, so `composer install` fails with platform-requirement errors. Run Composer through the official PHP instead: `php /usr/bin/composer.phar install` (same for any composer command).
+
+### Xdebug noise / slowness
+- The image ships Xdebug in step-debug mode (`docker/php.ini`). Every PHP CLI invocation prints `Xdebug: [Step Debug] Could not connect to debugging client...` and runs much slower (PHPStan/tests can take minutes). Prefix CLI commands with `XDEBUG_MODE=off` for clean, fast runs, e.g. `XDEBUG_MODE=off php artisan test`, `XDEBUG_MODE=off vendor/bin/phpstan analyse`.
+
+### Dev servers (start manually inside the `php` container)
+- Frontend assets: `npm run dev` (Vite HMR on port 5173). Without it you must have a `npm run build` output or you'll hit a Vite manifest error. `npm run dev` creates `public/hot`; delete it to fall back to built assets.
+- Jobs: `php artisan queue:work` is required for PDF generation, email sending, and paid-invoice notifications (queue is Redis-backed and not started by compose).
+- Reverb (`php artisan reverb:start`) is optional; without it the browser console/network will show harmless 503s from Echo trying to reach the WebSocket endpoint.
+
+### HTTPS / browser access
+- The app forces HTTPS: use `https://localhost:8443` (port 8080 just 301-redirects to 8443). Both the app cert (8443) and the Vite dev-server cert (5173) are self-signed, so a browser must accept both certificates (visit `https://localhost:5173` once and proceed, then the app) before Inertia assets will load in dev mode.
+- Sent mail (e.g. Fortify email verification) is captured by MailHog at `http://localhost:8025`.
+
+### Testing
+- The PHPUnit suite uses in-memory SQLite (see `phpunit.xml`) and needs no running services; `XDEBUG_MODE=off php artisan test --compact` passes. Feature tests that render Inertia pages require `public/build/manifest.json`, so run `npm run build` once before running the suite (or keep `npm run dev` running).

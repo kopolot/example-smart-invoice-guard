@@ -29,6 +29,48 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - eslint (ESLINT) - v9
 - prettier (PRETTIER) - v3
 
+## Local Runtime & Containers
+
+- This repository uses a custom `docker compose` stack from `compose.yaml` as the primary local runtime.
+- Prefer running project commands inside the `php` service/container unless there is a specific reason to run them on the host.
+- Main services in the stack:
+  - `php` - application container, working directory `/var/www/html`
+  - `httpd` - Apache frontend with SSL termination
+  - `db` - MariaDB 10.11
+  - `redis` - Redis for cache, queue, and sessions
+  - `mailhog` - local mail inbox UI
+- Host ports:
+  - app HTTP: `http://localhost:8080`
+  - app HTTPS: `https://localhost:8443`
+  - Vite dev server: `http://localhost:5173`
+  - MailHog UI: `http://localhost:8025`
+- Internal container hostnames used by the app configuration:
+  - database: `mariadb`
+  - redis: `redis`
+  - mail: `mailhog`
+  - PHP FPM hostname behind Apache: `php-fpm`
+- The app's `.env` / `.env.example` is configured for container networking (`DB_HOST=mariadb`, `REDIS_HOST=redis`, `MAIL_HOST=mailhog`), so preserve container-first assumptions when troubleshooting.
+- Queue workers and Reverb are not automatically managed by this compose file for local development; start them explicitly when needed.
+
+## Preferred Container Command Patterns
+
+- Prefer `docker compose exec php ...` for PHP / Composer / Artisan work.
+- Prefer `docker compose exec php npm ...` for frontend package scripts when working inside the application container.
+- Use `docker compose up -d --build` to build and start the local stack.
+- Use `docker compose ps` to inspect service state.
+- Use `docker compose logs <service>` when debugging container startup or runtime issues.
+- Use `docker compose exec db mariadb -ularavel -plaravel laravel` for direct MariaDB access only when application-level or Boost tools are not a better fit.
+- Use `docker compose exec redis redis-cli` for Redis inspection when needed.
+- The repository includes a `sail` wrapper script, but this project is not using a stock Sail service layout. Treat direct `docker compose` commands as the safer default unless the wrapper is already known to be configured correctly for the current environment.
+
+## Local Workflow Notes
+
+- First-time local setup is container-oriented: bring up the stack, then run install / key generation / migrations / asset build inside the app container.
+- If frontend changes are not visible, check whether Vite is running in the container or whether a production build is needed.
+- Apache terminates HTTPS on `8443`; WebSocket traffic for Reverb is proxied through Apache to the PHP container.
+- Mail delivery in local development should be verified through MailHog, not a real SMTP provider.
+- When sharing or testing URLs locally, prefer the exposed host ports above rather than internal container addresses unless a command runs entirely inside the Docker network.
+
 ## Skills Activation
 
 This project has domain-specific skills available in `**/skills/**`. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.

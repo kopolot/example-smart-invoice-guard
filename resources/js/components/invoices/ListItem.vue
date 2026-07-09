@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import type { Invoice } from '@/types/invoice';
 import { show as showInvoice } from '@/routes/invoices';
+import { computed } from 'vue';
 
 
 type Props = {
     invoice: Invoice;
 };
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+});
+
+const formattedInvoiceDate = computed(() => dateFormatter.format(new Date(props.invoice.date)));
 </script>
 
 <template>
@@ -16,7 +23,7 @@ defineProps<Props>();
             <h3 class="text-lg font-bold">{{ invoice.number }}</h3>
             <p>{{ invoice.total_amount }}</p>
             <p class="text-sm text-gray-500">{{ invoice.status }}</p>
-            <p class="text-sm text-gray-500">{{ invoice.date }}</p>
+            <p class="text-sm text-gray-500">{{ formattedInvoiceDate }}</p>
         </a>
     </div>
 </template>

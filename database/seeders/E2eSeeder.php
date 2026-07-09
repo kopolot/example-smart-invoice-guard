@@ -30,7 +30,7 @@ class E2eSeeder extends Seeder
             'total_amount' => 120,
             'date' => '2026-05-25',
             'due_date' => '2026-06-08',
-            'sent_at' => now()->subDays(2),
+            'sent_at' => now()->subDays(14),
         ]);
 
         Invoice::factory()->create([
@@ -40,6 +40,7 @@ class E2eSeeder extends Seeder
             'total_amount' => 50,
             'date' => '2026-07-01',
             'due_date' => '2026-07-20',
+            'sent_at' => now()->subDays(7),
         ]);
 
         Invoice::factory()->create([
@@ -49,6 +50,8 @@ class E2eSeeder extends Seeder
             'total_amount' => 75,
             'date' => '2026-06-08',
             'due_date' => '2026-07-05',
+            'sent_at' => now()->subDays(21),
+            'overdue_reminded_at' => now()->subDays(2),
         ]);
     }
 }

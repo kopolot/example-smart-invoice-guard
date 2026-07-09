@@ -6,6 +6,7 @@ use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
 use App\Notifications\InvoiceOverdueReminder;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
 
 class OverdueInvoiceService
 {
@@ -17,14 +18,38 @@ class OverdueInvoiceService
         Invoice::query()
             ->overdueCandidates($asOf)
             ->orderBy('id')
-            ->chunkById(100, function ($invoices) use (&$marked): void {
-                foreach ($invoices as $invoice) {
-                    $invoice->update([
-                        'status' => InvoiceStatus::OVERDUE,
-                    ]);
+            ->chunkById(500, function ($invoices) use (&$marked, $asOf): void {
+                $invoiceIds = $invoices->pluck('id')->all();
 
-                    $marked++;
+                if ($invoiceIds === []) {
+                    return;
                 }
+
+                DB::transaction(function () use ($invoiceIds, $asOf, &$marked): void {
+                    $updated = Invoice::query()
+                        ->whereIn('id', $invoiceIds)
+                        ->update([
+                            'status' => InvoiceStatus::OVERDUE,
+                            'updated_at' => $asOf,
+                        ]);
+
+                    if ($updated === 0) {
+                        return;
+                    }
+
+                    DB::table('invoice_status_histories')->insert(
+                        collect($invoiceIds)
+                            ->map(fn (int $invoiceId): array => [
+                                'invoice_id' => $invoiceId,
+                                'status' => InvoiceStatus::OVERDUE->value,
+                                'created_at' => $asOf,
+                                'updated_at' => $asOf,
+                            ])
+                            ->all(),
+                    );
+
+                    $marked += $updated;
+                });
             });
 
         return $marked;

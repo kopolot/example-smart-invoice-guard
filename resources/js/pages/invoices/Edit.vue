@@ -58,14 +58,14 @@ const invoiceRef = ref<Invoice>({
             <div class="row grid grid-cols-3">
                 <Label class="col" for="amount">Amount</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="number" name="amount" placeholder="Amount" v-model="invoiceRef.amount" />
+                    <Input required type="number" step="0.01" min="0" name="amount" placeholder="Amount" v-model="invoiceRef.amount" />
                     <InputError :message="errors.amount" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="tax_rate">Tax Rate</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="number" name="tax_rate" placeholder="Tax Rate" v-model="invoiceRef.tax_rate" />
+                    <Input required type="number" step="0.01" min="0" name="tax_rate" placeholder="Tax Rate" v-model="invoiceRef.tax_rate" />
                     <InputError :message="errors.tax_rate" />
                 </div>
             </div>

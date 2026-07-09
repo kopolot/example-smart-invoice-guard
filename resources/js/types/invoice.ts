@@ -7,6 +7,7 @@ export type Invoice = {
     total_amount: number;
     status: InvoiceStatus;
     date: string;
+    due_date: string;
     user_id: number;
     pdf_path: string | null;
     pdf_url: string | null;
@@ -16,14 +17,21 @@ export type Invoice = {
     deleted_at: string | null;
 };
 
-export type InvoiceStatus = 'paid' | 'unpaid' | 'partially_paid';
+export type InvoiceStatus = 'paid' | 'unpaid' | 'partially_paid' | 'overdue';
 
 export type InvoiceStatusesLabels = {
     [key in InvoiceStatus]: string;
-}
+};
 
 export const availableStatusesLabels: InvoiceStatusesLabels = {
     paid: 'Paid',
     unpaid: 'Unpaid',
     partially_paid: 'Partially Paid',
+    overdue: 'Overdue',
+};
+
+export const assignableStatusesLabels: Pick<InvoiceStatusesLabels, 'paid' | 'unpaid' | 'partially_paid'> = {
+    paid: availableStatusesLabels.paid,
+    unpaid: availableStatusesLabels.unpaid,
+    partially_paid: availableStatusesLabels.partially_paid,
 };

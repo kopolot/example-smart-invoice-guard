@@ -30,7 +30,14 @@ class UpdateInvoiceRequest extends FormRequest
             'tax_rate' => 'required|numeric|min:0',
             'tax_number' => 'required|string',
             'date' => 'required|date',
-            'status' => 'required|in:'.implode(',', array_column(InvoiceStatus::cases(), 'value')),
+            'due_date' => 'required|date|after_or_equal:date',
+            'status' => [
+                'required',
+                Rule::in(array_unique([
+                    ...InvoiceStatus::assignableValues(),
+                    $this->invoice->status->value,
+                ])),
+            ],
         ];
     }
 }

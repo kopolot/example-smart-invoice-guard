@@ -39,6 +39,7 @@ class DashboardTest extends TestCase
             'status' => InvoiceStatus::PAID,
             'total_amount' => 120,
             'date' => now()->subMonth(),
+            'due_date' => now()->subWeek(),
             'sent_at' => now()->subDays(2),
         ]);
 
@@ -48,6 +49,7 @@ class DashboardTest extends TestCase
             'status' => InvoiceStatus::PARTIALLY_PAID,
             'total_amount' => 80,
             'date' => now(),
+            'due_date' => now()->addWeek(),
         ]);
 
         $unpaidInvoice = Invoice::factory()->create([
@@ -56,6 +58,7 @@ class DashboardTest extends TestCase
             'status' => InvoiceStatus::UNPAID,
             'total_amount' => 50,
             'date' => now()->subMonths(2),
+            'due_date' => now()->addMonth(),
         ]);
 
         Invoice::factory()->create([
@@ -92,13 +95,17 @@ class DashboardTest extends TestCase
                 ->where('summary.outstandingRevenue', 130)
                 ->where('summary.sentInvoices', 1)
                 ->where('summary.averageInvoiceValue', 83.33)
-                ->has('statusBreakdown', 3)
+                ->where('overdue.count', 0)
+                ->where('overdue.revenue', 0)
+                ->has('statusBreakdown', 4)
                 ->where('statusBreakdown.0.status', 'paid')
                 ->where('statusBreakdown.0.count', 1)
                 ->where('statusBreakdown.1.status', 'unpaid')
                 ->where('statusBreakdown.1.count', 1)
                 ->where('statusBreakdown.2.status', 'partially_paid')
                 ->where('statusBreakdown.2.count', 1)
+                ->where('statusBreakdown.3.status', 'overdue')
+                ->where('statusBreakdown.3.count', 0)
                 ->has('monthlyRevenue', 7)
                 ->has('recentActivity', 3)
                 ->where('recentActivity.0.invoiceNumber', 'INV-OPEN-001')

@@ -34,7 +34,8 @@ class InvoiceUpdateTest extends TestCase
             'amount' => $invoiceA->amount,
             'tax_rate' => $invoiceA->tax_rate,
             'tax_number' => '1234567890',
-            'date' => $invoiceA->date,
+            'date' => $invoiceA->date->toDateString(),
+            'due_date' => $invoiceA->due_date->toDateString(),
             'status' => $invoiceA->status->value,
         ]);
 
@@ -63,7 +64,8 @@ class InvoiceUpdateTest extends TestCase
             'amount' => $invoice->amount,
             'tax_rate' => $invoice->tax_rate,
             'tax_number' => '1234567890',
-            'date' => $invoice->date,
+            'date' => $invoice->date->toDateString(),
+            'due_date' => $invoice->due_date->toDateString(),
             'status' => $invoice->status->value,
         ]);
 

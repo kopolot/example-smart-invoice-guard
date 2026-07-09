@@ -2,25 +2,27 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedData;
 use App\Enums\InvoiceStatus;
+use App\Models\Invoice\StatusHistory;
+use Carbon\CarbonInterface;
 use Database\Factories\InvoiceFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
-use App\Casts\EncryptedData;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Invoice\StatusHistory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @property int $id
  * @property string $number
  * @property float $amount
  * @property Carbon|null $date
+ * @property Carbon|null $due_date
  * @property float $tax_rate
  * @property EncryptedData $tax_number
  * @property float $total_amount
@@ -31,8 +33,9 @@ use App\Models\Invoice\StatusHistory;
  * @property string|null $pdf_path
  * @property string|null $pdf_url
  * @property Carbon|null $sent_at
+ * @property Carbon|null $overdue_reminded_at
  */
-#[Fillable(['user_id', 'number', 'amount', 'date', 'tax_rate', 'tax_number', 'total_amount', 'status', 'pdf_path', 'sent_at'])]
+#[Fillable(['user_id', 'number', 'amount', 'date', 'due_date', 'tax_rate', 'tax_number', 'total_amount', 'status', 'pdf_path', 'sent_at', 'overdue_reminded_at'])]
 class Invoice extends Model
 {
     /** @use HasFactory<InvoiceFactory> */
@@ -50,13 +53,30 @@ class Invoice extends Model
         return [
             'status' => InvoiceStatus::class,
             'tax_number' => EncryptedData::class,
+            'date' => 'date',
+            'due_date' => 'date',
+            'sent_at' => 'datetime',
+            'overdue_reminded_at' => 'datetime',
         ];
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     */
+    public function scopeOverdueCandidates(Builder $query, ?CarbonInterface $asOf = null): void
+    {
+        $asOf ??= now();
+
+        $query
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<', $asOf->toDateString())
+            ->whereIn('status', [InvoiceStatus::UNPAID, InvoiceStatus::PARTIALLY_PAID]);
     }
 
     protected function pdfUrl(): Attribute
     {
         return Attribute::make(
-            get: fn($value) => $this->pdf_path ? Storage::disk('public')->url($this->pdf_path) : null,
+            get: fn ($value) => $this->pdf_path ? Storage::disk('public')->url($this->pdf_path) : null,
         );
     }
 

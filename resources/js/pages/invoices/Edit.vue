@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { edit, update, index, show } from '@/routes/invoices';
 import type { Invoice } from '@/types/invoice';
-import { availableStatusesLabels } from '@/types/invoice';
+import { assignableStatusesLabels, availableStatusesLabels } from '@/types/invoice';
 import { Form, Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -33,7 +33,13 @@ defineOptions({
     }),
 });
 
-const invoiceRef = ref<Invoice>(props.invoice);
+const formatDateInputValue = (value: string) => value.slice(0, 10);
+
+const invoiceRef = ref<Invoice>({
+    ...props.invoice,
+    date: formatDateInputValue(props.invoice.date),
+    due_date: formatDateInputValue(props.invoice.due_date),
+});
 
 </script>
 
@@ -52,14 +58,14 @@ const invoiceRef = ref<Invoice>(props.invoice);
             <div class="row grid grid-cols-3">
                 <Label class="col" for="amount">Amount</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="number" name="amount" placeholder="Amount" v-model="invoiceRef.amount" />
+                    <Input required type="number" step="0.01" min="0" name="amount" placeholder="Amount" v-model="invoiceRef.amount" />
                     <InputError :message="errors.amount" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="tax_rate">Tax Rate</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="number" name="tax_rate" placeholder="Tax Rate" v-model="invoiceRef.tax_rate" />
+                    <Input required type="number" step="0.01" min="0" name="tax_rate" placeholder="Tax Rate" v-model="invoiceRef.tax_rate" />
                     <InputError :message="errors.tax_rate" />
                 </div>
             </div>
@@ -80,7 +86,7 @@ const invoiceRef = ref<Invoice>(props.invoice);
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem v-for="label,status of availableStatusesLabels" :value="status" :key="status">{{ label }}</SelectItem>
+                            <SelectItem v-for="label,status of assignableStatusesLabels" :value="status" :key="status">{{ label }}</SelectItem>
                         </SelectContent>
                     </Select>
                     <InputError :message="errors.status" />
@@ -91,6 +97,13 @@ const invoiceRef = ref<Invoice>(props.invoice);
                 <div class="col-2 col-end-4">
                     <Input required type="date" name="date" placeholder="Date" v-model="invoiceRef.date" />
                     <InputError :message="errors.date" />
+                </div>
+            </div>
+            <div class="row grid grid-cols-3">
+                <Label class="col" for="due_date">Due date</Label>
+                <div class="col-2 col-end-4">
+                    <Input required type="date" name="due_date" placeholder="Due date" v-model="invoiceRef.due_date" />
+                    <InputError :message="errors.due_date" />
                 </div>
             </div>
             <Button class="col-1 col-end-2" type="submit" :disabled="processing">Update Invoice</Button>

@@ -60,6 +60,7 @@ class InvoiceController extends Controller
             'total_amount' => $total,
             'status' => $request->status,
             'date' => $request->date,
+            'due_date' => $request->due_date,
         ]);
 
         return redirect()->route('invoices.show', $invoice);
@@ -99,6 +100,7 @@ class InvoiceController extends Controller
             'total_amount' => $total,
             'status' => $request->status,
             'date' => $request->date,
+            'due_date' => $request->due_date,
         ]);
 
         return redirect()->route('invoices.show', $invoice);

@@ -7,17 +7,24 @@ import { availableStatusesLabels } from '@/types/invoice';
 import { Form , useForm} from '@inertiajs/vue3';
 import { useEcho } from '@laravel/echo-vue';
 import axios from 'axios';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 
 const props = defineProps<{
-    invoice: any;
+    invoice: Invoice;
 }>();
 
-console.log(props.invoice);
-
 const invoice = ref<Invoice>(props.invoice);
+
+const dateFormatter = new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+});
+
+const formatDisplayDate = (value: string) => dateFormatter.format(new Date(value));
+
+const formattedInvoiceDate = computed(() => formatDisplayDate(invoice.value.date));
+const formattedDueDate = computed(() => formatDisplayDate(invoice.value.due_date));
 
 defineOptions({
     layout: (props: { invoice: Invoice }) => ({
@@ -132,13 +139,13 @@ const sendInvoice = async () => {
         <div class="flex flex-row border-b border-gray-200 pb-4 gap-2">
             <Label>Date</Label>
             <div class="">
-                <p>{{ invoice.date }}</p>
+                <p>{{ formattedInvoiceDate }}</p>
             </div>
         </div>
         <div class="flex flex-row border-b border-gray-200 pb-4 gap-2">
             <Label>Due date</Label>
             <div class="">
-                <p>{{ invoice.due_date }}</p>
+                <p>{{ formattedDueDate }}</p>
             </div>
         </div>
     </div>

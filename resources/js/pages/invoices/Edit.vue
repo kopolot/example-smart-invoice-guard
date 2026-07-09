@@ -33,7 +33,13 @@ defineOptions({
     }),
 });
 
-const invoiceRef = ref<Invoice>(props.invoice);
+const formatDateInputValue = (value: string) => value.slice(0, 10);
+
+const invoiceRef = ref<Invoice>({
+    ...props.invoice,
+    date: formatDateInputValue(props.invoice.date),
+    due_date: formatDateInputValue(props.invoice.due_date),
+});
 
 </script>
 

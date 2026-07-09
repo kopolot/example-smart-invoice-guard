@@ -28,7 +28,7 @@ test.describe('Dashboard', () => {
     });
 
     test('can navigate to invoices list from dashboard', async ({ page }) => {
-        await page.getByRole('link', { name: 'View invoices', exact: true }).click();
+        await page.locator('a[href="/invoices"]').first().click();
 
         await expect(page).toHaveURL(/\/invoices$/);
         await expect(page.getByRole('link', { name: 'Create Invoice' })).toBeVisible();

@@ -25,7 +25,7 @@ export default defineConfig({
         },
         {
             name: 'authenticated',
-            testMatch: /(auth-session|dashboard)\.spec\.ts/,
+            testMatch: /(auth-session|dashboard|invoices)\.spec\.ts/,
             use: {
                 ...devices['Desktop Chrome'],
                 storageState: authFile,

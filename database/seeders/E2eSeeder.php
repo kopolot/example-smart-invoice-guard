@@ -28,8 +28,8 @@ class E2eSeeder extends Seeder
             'number' => 'E2E-PAID-001',
             'status' => InvoiceStatus::PAID,
             'total_amount' => 120,
-            'date' => now()->subMonth()->toDateString(),
-            'due_date' => now()->subWeek()->toDateString(),
+            'date' => '2026-05-25',
+            'due_date' => '2026-06-08',
             'sent_at' => now()->subDays(2),
         ]);
 
@@ -38,8 +38,8 @@ class E2eSeeder extends Seeder
             'number' => 'E2E-OPEN-001',
             'status' => InvoiceStatus::UNPAID,
             'total_amount' => 50,
-            'date' => now()->subWeek()->toDateString(),
-            'due_date' => now()->addWeek()->toDateString(),
+            'date' => '2026-07-01',
+            'due_date' => '2026-07-20',
         ]);
 
         Invoice::factory()->create([
@@ -47,8 +47,8 @@ class E2eSeeder extends Seeder
             'number' => 'E2E-OVERDUE-001',
             'status' => InvoiceStatus::OVERDUE,
             'total_amount' => 75,
-            'date' => now()->subMonth()->toDateString(),
-            'due_date' => now()->subDays(3)->toDateString(),
+            'date' => '2026-06-08',
+            'due_date' => '2026-07-05',
         ]);
     }
 }

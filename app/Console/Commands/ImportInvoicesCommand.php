@@ -2,12 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Invoice;
+use App\Services\DashboardStatsService;
+use App\Services\InvoicePriceCalculator;
+use GuzzleHttp\Client;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use GuzzleHttp\Client;
-use App\Models\Invoice;
-use App\Services\InvoicePriceCalculator;
 use Illuminate\Support\Facades\Crypt;
 
 #[Signature('app:import-invoices {file} {batchSize=100}')]
@@ -15,10 +16,13 @@ use Illuminate\Support\Facades\Crypt;
 class ImportInvoicesCommand extends Command
 {
     protected int $batchSize;
+
     protected array $batch = [];
 
-    public function __construct(protected InvoicePriceCalculator $invoicePriceCalculator)
-    {
+    public function __construct(
+        protected InvoicePriceCalculator $invoicePriceCalculator,
+        protected DashboardStatsService $dashboardStatsService,
+    ) {
         parent::__construct();
     }
 
@@ -29,19 +33,19 @@ class ImportInvoicesCommand extends Command
         try {
             $filepath = $this->argument('file');
 
-            if (!filter_var($filepath, FILTER_VALIDATE_URL)) {
+            if (! filter_var($filepath, FILTER_VALIDATE_URL)) {
                 throw new \Exception('Invalid URL');
             }
 
-            $this->info('Importing invoices from ' . $filepath);
+            $this->info('Importing invoices from '.$filepath);
 
-            $client = new Client();
+            $client = new Client;
             $response = $client->get($filepath, ['stream' => true, 'verify' => false]);
 
             // open stream as resource
             $handle = $response->getBody()->detach();
 
-            if (!is_resource($handle)) {
+            if (! is_resource($handle)) {
                 throw new \Exception('Failed to open stream');
             }
 
@@ -59,10 +63,12 @@ class ImportInvoicesCommand extends Command
             $this->processBatch();
 
             $this->info('Invoices imported successfully');
+
             return self::SUCCESS;
 
         } catch (\Exception $e) {
             $this->error($e->getMessage());
+
             return self::FAILURE;
         }
     }
@@ -97,10 +103,11 @@ class ImportInvoicesCommand extends Command
         }
 
         try {
-            $this->info('Processing batch of ' . count($this->batch) . ' invoices');
+            $this->info('Processing batch of '.count($this->batch).' invoices');
 
             $this->batch = array_map(function ($invoice) {
                 $invoice['tax_number'] = Crypt::encryptString($invoice['tax_number']);
+
                 return $invoice;
             }, $this->batch);
 
@@ -108,6 +115,10 @@ class ImportInvoicesCommand extends Command
                 $this->batch,
                 ['number', 'user_id'],
                 ['user_id', 'number', 'amount', 'tax_rate', 'tax_number', 'status', 'date', 'total_amount']
+            );
+
+            $this->dashboardStatsService->forgetForUsers(
+                collect($this->batch)->pluck('user_id'),
             );
 
             $this->info("Batch processed with $result invoices");

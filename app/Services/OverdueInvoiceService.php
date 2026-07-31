@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 class OverdueInvoiceService
 {
+    public function __construct(private DashboardStatsService $dashboardStatsService) {}
+
     public function markOverdue(?CarbonInterface $asOf = null): int
     {
         $asOf ??= now();
@@ -25,7 +27,10 @@ class OverdueInvoiceService
                     return;
                 }
 
-                DB::transaction(function () use ($invoiceIds, $asOf, &$marked): void {
+                $userIds = $invoices->pluck('user_id')->unique()->all();
+                $updated = 0;
+
+                DB::transaction(function () use ($invoiceIds, $asOf, &$marked, &$updated): void {
                     $updated = Invoice::query()
                         ->whereIn('id', $invoiceIds)
                         ->update([
@@ -50,6 +55,10 @@ class OverdueInvoiceService
 
                     $marked += $updated;
                 });
+
+                if ($updated > 0) {
+                    $this->dashboardStatsService->forgetForUsers($userIds);
+                }
             });
 
         return $marked;

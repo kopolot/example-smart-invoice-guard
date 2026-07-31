@@ -29,3 +29,20 @@ export type RecentActivityItem = {
     status: string;
     changedAt: string;
 };
+
+export type HotInvoiceItem = {
+    invoiceId: number;
+    number: string;
+    views: number;
+    uniqueVisitors: number;
+    heat: number;
+    lastSeenAt: string | null;
+};
+
+export type InvoicePulse = {
+    views: number;
+    uniqueVisitors: number;
+    lastSeenAt: string | null;
+    lastVisitor: string | null;
+    number: string | null;
+};

@@ -10,12 +10,17 @@ use App\Jobs\GenerateInvoicePdfJob;
 use App\Jobs\SendInvoiceEmail;
 use App\Models\Invoice;
 use App\Services\InvoicePriceCalculator;
+use App\Services\InvoicePulseService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class InvoiceController extends Controller
 {
-    public function __construct(private InvoicePriceCalculator $invoicePriceCalculator) {}
+    public function __construct(
+        private InvoicePriceCalculator $invoicePriceCalculator,
+        private InvoicePulseService $invoicePulseService,
+    ) {}
 
     /**
      * Display a listing of the resource.
@@ -69,10 +74,13 @@ class InvoiceController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Invoice $invoice)
+    public function show(Request $request, Invoice $invoice)
     {
+        $this->invoicePulseService->recordFromRequest($invoice, $request);
+
         return Inertia::render('invoices/Show', [
             'invoice' => $invoice,
+            'pulse' => $this->invoicePulseService->forInvoice($invoice->id),
         ]);
     }
 
@@ -143,10 +151,13 @@ class InvoiceController extends Controller
         return redirect(route('home'));
     }
 
-    public function showPayForm(Invoice $invoice)
+    public function showPayForm(Request $request, Invoice $invoice)
     {
+        $this->invoicePulseService->recordFromRequest($invoice, $request);
+
         return Inertia::render('invoices/PayForm', [
             'invoice' => $invoice,
+            'pulse' => $this->invoicePulseService->forInvoice($invoice->id),
         ]);
     }
 

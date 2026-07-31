@@ -22,6 +22,13 @@ defineOptions({
 
 const props = defineProps<{
     invoice: Invoice;
+    pulse?: {
+        views: number;
+        uniqueVisitors: number;
+        lastSeenAt: string | null;
+        lastVisitor: string | null;
+        number: string | null;
+    };
 }>();
 </script>
 
@@ -30,6 +37,9 @@ const props = defineProps<{
     <h1 class="sr-only">Pay Invoice simulation</h1>
     <div class="flex flex-col space-y-6 p-4">
         <h2 class="text-2xl font-bold">Pay Invoice simulation</h2>
+        <p v-if="props.pulse" class="text-sm text-muted-foreground">
+            {{ props.pulse.views }} views · {{ props.pulse.uniqueVisitors }} unique visitors
+        </p>
         <Form
             v-bind="pay.form(props.invoice.id)"
             v-slot="{ processing }"

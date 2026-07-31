@@ -1,11 +1,13 @@
 FROM php:8.5-fpm-alpine AS base
 RUN apk update
-RUN apk add nano git bash sudo bash-completion mariadb-client autoconf build-base cronie nodejs npm composer;apk add --update linux-headers libzip-dev icu-dev
+RUN apk add nano git bash sudo bash-completion mariadb-client autoconf build-base cronie nodejs npm composer;apk add --update linux-headers libzip-dev icu-dev libmemcached-dev
 RUN pecl install "xdebug-3.5.0";
 RUN echo "zend_extension=xdebug.so" > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 RUN docker-php-ext-install intl zip pdo_mysql pcntl
 RUN pecl install redis
 RUN echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini
+RUN pecl install memcached
+RUN echo "extension=memcached.so" > /usr/local/etc/php/conf.d/docker-php-ext-memcached.ini
 
 RUN adduser -s $(which bash) --disabled-password -u 1000 container
 RUN echo -e "Defaults rootpw\nALL ALL=(ALL:ALL) PASSWD: ALL\nDefaults env_keep += ""*""" | tee -a /etc/sudoers

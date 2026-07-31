@@ -13,6 +13,13 @@ import { toast } from 'vue-sonner';
 
 const props = defineProps<{
     invoice: Invoice;
+    pulse: {
+        views: number;
+        uniqueVisitors: number;
+        lastSeenAt: string | null;
+        lastVisitor: string | null;
+        number: string | null;
+    };
 }>();
 
 const invoice = ref<Invoice>(props.invoice);
@@ -148,6 +155,12 @@ const sendInvoice = async () => {
                 <p>{{ formattedDueDate }}</p>
             </div>
         </div>
+        <div class="flex flex-row border-b border-gray-200 pb-4 gap-2">
+            <Label>Pulse</Label>
+            <div class="">
+                <p>{{ pulse.views }} views · {{ pulse.uniqueVisitors }} unique visitors</p>
+            </div>
+        </div>
     </div>
     <div class="p-5 flex flex-row gap-2 flex-wrap">
         <Button class="bg-blue-500 text-white px-5 py-1 rounded" >
@@ -180,7 +193,7 @@ const sendInvoice = async () => {
     <div class="p-5" v-if="invoice.pdf_url">
         <Label>PDF</Label>
         <div class="flex flex-row border-b border-gray-200 pb-4 gap-2">
-            <iframe :src="invoice.pdf_url" frameborder="0" class="w-full h-full min-h-[500px]"/>
+            <iframe :src="invoice.pdf_url" frameborder="0" class="w-full h-full min-h-125"/>
         </div>
         <a class="text-blue-500" :href="invoice.pdf_url" target="_blank">Download PDF</a>
     </div>

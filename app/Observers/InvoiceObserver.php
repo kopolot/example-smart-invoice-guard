@@ -4,10 +4,14 @@ namespace App\Observers;
 
 use App\Models\Invoice;
 use App\Services\DashboardStatsService;
+use App\Services\InvoicePulseService;
 
 class InvoiceObserver
 {
-    public function __construct(private DashboardStatsService $dashboardStatsService) {}
+    public function __construct(
+        private DashboardStatsService $dashboardStatsService,
+        private InvoicePulseService $invoicePulseService,
+    ) {}
 
     /**
      * Handle the Invoice "created" event.
@@ -41,6 +45,7 @@ class InvoiceObserver
     public function deleted(Invoice $invoice): void
     {
         $this->invalidateDashboard($invoice);
+        $this->invoicePulseService->forget($invoice);
     }
 
     /**
@@ -57,6 +62,7 @@ class InvoiceObserver
     public function forceDeleted(Invoice $invoice): void
     {
         $this->invalidateDashboard($invoice);
+        $this->invoicePulseService->forget($invoice);
     }
 
     private function invalidateDashboard(Invoice $invoice): void

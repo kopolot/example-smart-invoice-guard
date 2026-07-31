@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\InvoiceStatus;
 use App\Models\Invoice\StatusHistory;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardStatsService
@@ -24,6 +25,50 @@ class DashboardStatsService
      * }
      */
     public function forUser(User $user): array
+    {
+        return Cache::remember(
+            $this->cacheKey($user->id),
+            now()->endOfDay(),
+            fn (): array => $this->compute($user),
+        );
+    }
+
+    public function forgetForUser(int $userId): void
+    {
+        Cache::forget($this->cacheKey($userId));
+    }
+
+    /**
+     * @param  iterable<int>  $userIds
+     */
+    public function forgetForUsers(iterable $userIds): void
+    {
+        foreach (collect($userIds)->unique()->filter() as $userId) {
+            $this->forgetForUser((int) $userId);
+        }
+    }
+
+    public function cacheKey(int $userId): string
+    {
+        return sprintf('dashboard.stats.%d.%s', $userId, now()->toDateString());
+    }
+
+    /**
+     * @return array{
+     *     summary: array{
+     *         totalInvoices: int,
+     *         collectedRevenue: float,
+     *         outstandingRevenue: float,
+     *         sentInvoices: int,
+     *         averageInvoiceValue: float
+     *     },
+     *     overdue: array{count: int, revenue: float},
+     *     statusBreakdown: array<int, array{status: string, label: string, count: int}>,
+     *     monthlyRevenue: array<int, array{month: string, label: string, revenue: float, invoices: int}>,
+     *     recentActivity: array<int, array{invoiceNumber: string, status: string, changedAt: string}>
+     * }
+     */
+    private function compute(User $user): array
     {
         return [
             'summary' => $this->summary($user),
@@ -117,7 +162,7 @@ class DashboardStatsService
             ->selectRaw("{$monthExpression} as month")
             ->selectRaw('coalesce(sum(total_amount), 0) as revenue')
             ->selectRaw('count(*) as invoices')
-            ->whereBetween(DB::raw('coalesce(date, created_at)'), [$startMonth->toDateString(), $endMonth->toDateTimeString()])
+            ->whereBetween('date', [$startMonth->toDateString(), $endMonth->toDateTimeString()])
             ->groupBy(DB::raw($monthExpression))
             ->get()
             ->keyBy('month');
@@ -137,8 +182,8 @@ class DashboardStatsService
     private function monthExpression(): string
     {
         return match (DB::connection()->getDriverName()) {
-            'sqlite' => "strftime('%Y-%m', coalesce(date, created_at))",
-            default => "date_format(coalesce(date, created_at), '%Y-%m')",
+            'sqlite' => "strftime('%Y-%m', date)",
+            default => "date_format(date, '%Y-%m')",
         };
     }
 

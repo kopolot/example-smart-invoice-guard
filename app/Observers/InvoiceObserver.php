@@ -3,9 +3,12 @@
 namespace App\Observers;
 
 use App\Models\Invoice;
+use App\Services\DashboardStatsService;
 
 class InvoiceObserver
 {
+    public function __construct(private DashboardStatsService $dashboardStatsService) {}
+
     /**
      * Handle the Invoice "created" event.
      */
@@ -14,6 +17,8 @@ class InvoiceObserver
         $invoice->statusHistories()->create([
             'status' => $invoice->status,
         ]);
+
+        $this->invalidateDashboard($invoice);
     }
 
     /**
@@ -21,11 +26,13 @@ class InvoiceObserver
      */
     public function updated(Invoice $invoice): void
     {
-        if ($invoice->isDirty('status')) {
+        if ($invoice->wasChanged('status')) {
             $invoice->statusHistories()->create([
                 'status' => $invoice->status,
             ]);
         }
+
+        $this->invalidateDashboard($invoice);
     }
 
     /**
@@ -33,7 +40,7 @@ class InvoiceObserver
      */
     public function deleted(Invoice $invoice): void
     {
-        //
+        $this->invalidateDashboard($invoice);
     }
 
     /**
@@ -41,7 +48,7 @@ class InvoiceObserver
      */
     public function restored(Invoice $invoice): void
     {
-        //
+        $this->invalidateDashboard($invoice);
     }
 
     /**
@@ -49,6 +56,11 @@ class InvoiceObserver
      */
     public function forceDeleted(Invoice $invoice): void
     {
-        //
+        $this->invalidateDashboard($invoice);
+    }
+
+    private function invalidateDashboard(Invoice $invoice): void
+    {
+        $this->dashboardStatsService->forgetForUser((int) $invoice->user_id);
     }
 }

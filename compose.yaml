@@ -61,6 +61,12 @@ services:
         networks:
             - app
 
+    memcached:
+        image: memcached:1.6-alpine
+        hostname: memcached
+        networks:
+            - app
+
     mailhog:
         image: mailhog/mailhog:latest
         hostname: mailhog

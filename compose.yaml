@@ -1,3 +1,18 @@
+x-pxc-node: &pxc-node
+    image: percona/percona-xtradb-cluster:8.0
+    networks:
+        - pxc-net
+    healthcheck:
+        test:
+            [
+                "CMD-SHELL",
+                'mysql -h127.0.0.1 -uroot -proot -Nse "SHOW STATUS LIKE ''wsrep_local_state_comment'';" 2>/dev/null | grep -q Synced && mysql -h127.0.0.1 -uroot -proot -Nse "SHOW STATUS LIKE ''wsrep_cluster_status'';" 2>/dev/null | grep -q Primary',
+            ]
+        interval: 10s
+        timeout: 5s
+        retries: 30
+        start_period: 90s
+
 services:
     php:
         image: smart-invoice-guard/php:8.5
@@ -14,8 +29,11 @@ services:
             - "host.docker.internal:host-gateway"
         ports:
             - 5173:5173
+        depends_on:
+            - proxysql
         networks:
             - app
+
     httpd:
         image: smart-invoice-guard/httpd:2.4
         build:
@@ -34,18 +52,7 @@ services:
             - php
         networks:
             - app
-    db:
-        image: mariadb:10.11
-        hostname: mariadb
-        volumes:
-            - db_data:/var/lib/mysql
-        environment:
-            MYSQL_ROOT_PASSWORD: root
-            MYSQL_DATABASE: laravel
-            MYSQL_USER: laravel
-            MYSQL_PASSWORD: laravel
-        networks:
-            - app
+
     redis:
         image: redis:7.4-alpine
         hostname: redis
@@ -53,6 +60,7 @@ services:
             - redis_data:/data
         networks:
             - app
+
     mailhog:
         image: mailhog/mailhog:latest
         hostname: mailhog
@@ -61,10 +69,80 @@ services:
         networks:
             - app
 
+    pxc-node1:
+        <<: *pxc-node
+        hostname: pxc-node1
+        container_name: pxc-node1
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: laravel
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: laravel
+            CLUSTER_NAME: smart-invoice-guard
+            XTRABACKUP_PASSWORD: xtrabackup
+        volumes:
+            - ./docker/pxc.cnf:/etc/percona-xtradb-cluster.conf.d/pxc.cnf:ro
+            - pxc_data_node1:/var/lib/mysql
+
+    pxc-node2:
+        <<: *pxc-node
+        hostname: pxc-node2
+        container_name: pxc-node2
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            CLUSTER_NAME: smart-invoice-guard
+            CLUSTER_JOIN: pxc-node1
+            XTRABACKUP_PASSWORD: xtrabackup
+        restart: on-failure
+        volumes:
+            # Must keep pxc.cnf mount — overriding volumes drops the anchor mounts.
+            - ./docker/pxc.cnf:/etc/percona-xtradb-cluster.conf.d/pxc.cnf:ro
+        depends_on:
+            pxc-node1:
+                condition: service_healthy
+
+    pxc-node3:
+        <<: *pxc-node
+        hostname: pxc-node3
+        container_name: pxc-node3
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            CLUSTER_NAME: smart-invoice-guard
+            CLUSTER_JOIN: pxc-node1
+            XTRABACKUP_PASSWORD: xtrabackup
+        restart: on-failure
+        volumes:
+            - ./docker/pxc.cnf:/etc/percona-xtradb-cluster.conf.d/pxc.cnf:ro
+        depends_on:
+            pxc-node1:
+                condition: service_healthy
+
+    # App connects here as DB_HOST=mariadb / DB_PORT=3306
+    proxysql:
+        image: proxysql/proxysql:2.5.5
+        hostname: mariadb
+        container_name: pxc-proxysql
+        volumes:
+            - ./docker/proxysql.cnf:/etc/proxysql.cnf:ro
+        depends_on:
+            pxc-node1:
+                condition: service_healthy
+            pxc-node2:
+                condition: service_healthy
+            pxc-node3:
+                condition: service_healthy
+        networks:
+            app:
+                aliases:
+                    - mariadb
+            pxc-net:
+
 volumes:
     php_data:
-    db_data:
     redis_data:
+    pxc_data_node1:
 
 networks:
     app:
+    pxc-net:
+        driver: bridge

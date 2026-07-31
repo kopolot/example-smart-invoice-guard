@@ -1,0 +1,4 @@
+[mysqld]
+# Local/dev only: nodes share no certs, so encrypted Galera traffic fails with
+# "tlsv1 alert decrypt error" and joiners hit pc.wait_prim_timeout.
+pxc-encrypt-cluster-traffic=OFF

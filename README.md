@@ -1,8 +1,8 @@
 # Smart Invoice Guard
 
-Demonstracyjna aplikacja do zarządzania fakturami, zbudowana w **Laravel 13 + Inertia.js v3 + Vue 3**. Projekt powstał jako portfolio/showcase pod rozmowę rekrutacyjną — celem nie jest "kolejny CRUD", lecz pokazanie **świadomych decyzji inżynierskich**: idempotencji płatności, kolejkowanych zadań, szyfrowania danych wrażliwych, audytu zmian statusu, rate limitingu zależnego od tokenu, importu strumieniowego i pełnego środowiska Docker.
+Demonstracyjna aplikacja do zarządzania fakturami, zbudowana w **Laravel 13 + Inertia.js v3 + Vue 3**. Projekt powstał jako portfolio/showcase pod rozmowę rekrutacyjną — celem nie jest "kolejny CRUD", lecz pokazanie **świadomych decyzji inżynierskich**: idempotencji płatności, kolejkowanych zadań, szyfrowania danych wrażliwych, audytu zmian statusu, rate limitingu zależnego od tokenu, importu strumieniowego, cache (Memcached), engagement trackingu (Redis), wyszukiwania pełnotekstowego (Elasticsearch) i pełnego środowiska Docker (PXC + ProxySQL).
 
-> Stack: PHP 8.5 · Laravel 13 · Inertia v3 · Vue 3 · Tailwind v4 · MariaDB · Redis · DomPDF · Reverb · Sanctum · Fortify · Wayfinder
+> Stack: PHP 8.5 · Laravel 13 · Inertia v3 · Vue 3 · Tailwind v4 · Percona XtraDB Cluster · ProxySQL · Redis · Memcached · Elasticsearch · DomPDF · Reverb · Sanctum · Fortify · Wayfinder
 
 ---
 
@@ -15,6 +15,7 @@ Demonstracyjna aplikacja do zarządzania fakturami, zbudowana w **Laravel 13 + I
 - [Najciekawsze fragmenty kodu](#najciekawsze-fragmenty-kodu)
 - [API](#api)
 - [Import faktur z CSV](#import-faktur-z-csv)
+- [Wyszukiwanie faktur (Elasticsearch)](#wyszukiwanie-faktur-elasticsearch)
 - [Testy i jakość kodu](#testy-i-jakość-kodu)
 - [Struktura projektu](#struktura-projektu)
 
@@ -24,13 +25,17 @@ Demonstracyjna aplikacja do zarządzania fakturami, zbudowana w **Laravel 13 + I
 
 | Obszar | Co pokazuje |
 | --- | --- |
-| **Idempotentne płatności** | Dedykowany middleware `EnsureRequestIsIdempotent` wykorzystujący atomowe `Cache::add` (Redis) — zabezpiecza przed podwójnym opłaceniem faktury przy podwójnym kliknięciu / retry. |
+| **Idempotentne płatności** | Dedykowany middleware `EnsureRequestIsIdempotent` wykorzystujący atomowe `Cache::add` — zabezpiecza przed podwójnym opłaceniem faktury przy podwójnym kliknięciu / retry. |
 | **Kolejkowane zadania** | Generowanie PDF oraz wysyłka e‑maili jako joby (`ShouldQueue`). Wysyłka jest dodatkowo `ShouldBeUnique` + chroniona `lockForUpdate()` i `DB::afterCommit()`. |
 | **Szyfrowanie danych wrażliwych** | NIP (`tax_number`) szyfrowany w spoczynku przez własny cast `EncryptedData` (Laravel Crypt). |
 | **Audyt statusów** | `InvoiceObserver` automatycznie zapisuje każdą zmianę statusu do tabeli `status_histories`. |
 | **Event / Listener** | Opłacenie faktury (`InvoicePaid`) → aktualizacja statusu + powiadomienie użytkownika. |
 | **Rate limiting świadomy tokenu** | Limiter API rozpoznaje token Sanctum i nadaje wyższy limit zalogowanym (60/min) niż anonimowym (5/min). |
 | **Import strumieniowy CSV** | Komenda Artisan parsuje plik strumieniowo i wykonuje batchowy `upsert` — stała pamięć niezależnie od wielkości pliku. |
+| **Cache (Memcached)** | Dashboard stats i inne hot path-y przez `CACHE_STORE=memcached`. |
+| **Invoice Pulse (Redis)** | `InvoicePulseService` rejestruje odsłony (SET unikalnych gości, HASH liczników, ZSET rankingu „hot invoices”) w jednym skrypcie Lua. |
+| **Wyszukiwanie (Elasticsearch)** | `InvoiceSearchService` indeksuje faktury (multi-fields + `edge_ngram` pod prefix numeru); UI na `/invoices?q=…`. |
+| **Baza HA (lokalnie)** | Percona XtraDB Cluster (3 węzły) + ProxySQL jako `DB_HOST=mariadb`. |
 | **Autoryzacja** | Policy + `->can()` na poziomie tras; każdy widzi tylko własne faktury. |
 | **Soft deletes** | Faktury usuwane miękko (`SoftDeletes`). |
 | **Uwierzytelnianie** | Fortify: logowanie, rejestracja, reset hasła, weryfikacja e‑mail, **2FA (TOTP)**, **passkeys (WebAuthn)**, tokeny API (Sanctum). |
@@ -44,23 +49,28 @@ Demonstracyjna aplikacja do zarządzania fakturami, zbudowana w **Laravel 13 + I
 ### Cykl życia faktury
 
 ```
-utworzenie ──► Observer zapisuje pierwszy wpis w status_histories
+utworzenie ──► Observer: status_histories + indeks ES + invalidacja cache dashboardu
    │
    ├─► /pdf      ──► GenerateInvoicePdfJob (kolejka) ──► DomPDF ──► zapis pdf_path ──► event InvoicePdfGenerated
    │
    ├─► /send     ──► SendInvoiceEmail (kolejka, unique) ──► lock + transakcja ──► Mail ──► event InvoiceSent
    │
+   ├─► show/pay  ──► InvoicePulseService (Redis) — views / unique visitors / heat ranking
+   │
    └─► /pay      ──► middleware idempotencji ──► event InvoicePaid
                        └─► UpdateInvoiceStatus (lock) ──► status = paid
                        └─► SendInvoicePaidNotification ──► powiadomienie
+
+usunięcie ──► Observer: czyszczenie pulse Redis + dokumentu ES + cache dashboardu
 ```
 
 ### Dlaczego tak
 
 - **Idempotencja przez `Cache::add`** — operacja atomowa "ustaw, jeśli nie istnieje". Klucz `X-Idempotency-Key` blokuje równoległe/powtórzone żądania zapłaty zanim trafią do logiki domenowej; po sukcesie zostaje oznaczony jako `completed`, przy błędzie jest zwalniany.
 - **`lockForUpdate()` + `afterCommit()`** w wysyłce e‑maila — gwarancja, że faktura zostanie wysłana dokładnie raz nawet przy równoległych workerach, a mail wychodzi dopiero po zatwierdzeniu transakcji.
-- **Observer zamiast logiki w kontrolerze** — historia statusów jest spójna niezależnie od miejsca zmiany (kontroler, import, listener).
+- **Observer zamiast logiki w kontrolerze** — historia statusów, indeks wyszukiwania i cache są spójne niezależnie od miejsca zmiany (kontroler, import, listener).
 - **Cast szyfrujący** — dane wrażliwe są przezroczyście szyfrowane/odszyfrowywane, logika modelu pozostaje czysta.
+- **Redis vs Memcached vs Elasticsearch** — celowe rozdzielenie ról: Memcached = ogólny cache, Redis = struktury danych (pulse / kolejki / sesje), Elasticsearch = full-text + prefix search.
 
 ---
 
@@ -71,7 +81,8 @@ utworzenie ──► Observer zapisuje pierwszy wpis w status_histories
 - Laravel Fortify (auth headless), Sanctum (tokeny API)
 - Laravel Reverb (WebSockets), Wayfinder (typowane trasy)
 - barryvdh/laravel-dompdf (generowanie PDF)
-- Redis (cache, kolejki, sesje), MariaDB 10.11
+- `elasticsearch/elasticsearch` (oficjalny klient PHP)
+- Percona XtraDB Cluster 8.0 + ProxySQL, Redis 7, Memcached 1.6, Elasticsearch 8.15
 
 **Frontend**
 - Inertia.js v3 + Vue 3 (SPA bez własnego API)
@@ -86,7 +97,7 @@ utworzenie ──► Observer zapisuje pierwszy wpis w status_histories
 
 ## Uruchomienie (Docker)
 
-Środowisko zawiera: PHP‑FPM, Apache, MariaDB, Redis oraz MailHog (podgląd maili).
+Środowisko zawiera: PHP‑FPM, Apache, PXC (3 węzły) + ProxySQL, Redis, Memcached, Elasticsearch oraz MailHog.
 
 ```bash
 # 1. Zbuduj i wystartuj kontenery
@@ -96,10 +107,11 @@ bin/bash
 
 # 3. Wewnątrz kontenera – pełny setup
 cp .env.example .env
-composer install
+php /usr/bin/composer.phar install
 php artisan key:generate
 php artisan storage:link
 php artisan migrate
+php artisan invoices:reindex --fresh   # indeks Elasticsearch
 npm install
 npm run build
 
@@ -115,12 +127,15 @@ Po starcie:
 | Aplikacja (HTTPS) | https://localhost:8443 |
 | MailHog (skrzynka) | http://localhost:8025 |
 | Vite (dev) | https://localhost:5173 |
+| Elasticsearch | hostname `elasticsearch:9200` (tylko sieć Docker; bez mapowania hosta) |
+
+Konfiguracja ES (`.env`): `ELASTICSEARCH_ENABLED`, `ELASTICSEARCH_HOST`, `ELASTICSEARCH_INVOICES_INDEX`.
 
 ---
 
 ## Najciekawsze fragmenty kodu
 
-**Middleware idempotencji** — atomowa blokada na Redis:
+**Middleware idempotencji** — atomowa blokada:
 
 ```18:48:app/Http/Middleware/EnsureRequestIsIdempotent.php
 public function handle(Request $request, Closure $next): Response
@@ -218,11 +233,33 @@ NIP jest szyfrowany przed zapisem, identycznie jak przez cast modelu.
 
 ---
 
+## Wyszukiwanie faktur (Elasticsearch)
+
+Lista faktur (`/invoices`) obsługuje `?q=`:
+
+- indeksowanie synchroniczne w `InvoiceObserver` (create / update / restore / delete)
+- multi-fields na `number`: exact (lowercase), `edge_ngram` prefix (2–40), tokeny `standard`
+- przy niedostępności ES — fallback do `LIKE` w SQL
+- przebudowa indeksu:
+
+```bash
+php artisan invoices:reindex --fresh
+# opcjonalnie: --user=1
+```
+
+Testy: `tests/Feature/Invoice/InvoiceSearchTest.php` (pomijane, gdy ES nie odpowiada).
+
+---
+
 ## Testy i jakość kodu
 
 ```bash
-php artisan test --compact          # testy (PHPUnit, baza SQLite in-memory)
+XDEBUG_MODE=off php artisan test --compact          # PHPUnit (SQLite in-memory)
+XDEBUG_MODE=off php artisan test --compact tests/Feature/Invoice/InvoiceSearchTest.php
+XDEBUG_MODE=off php artisan test --compact tests/Feature/Invoice/InvoicePulseTest.php
 ```
+
+Część testów Feature wymaga działającego Redis / Elasticsearch w sieci Docker (w przeciwnym razie są skipowane).
 
 ---
 
@@ -231,8 +268,8 @@ php artisan test --compact          # testy (PHPUnit, baza SQLite in-memory)
 ```
 app/
 ├─ Casts/EncryptedData.php           # przezroczyste szyfrowanie NIP
-├─ Console/Commands/                 # import + generator danych testowych
-├─ Enums/InvoiceStatus.php           # paid / unpaid / partially_paid
+├─ Console/Commands/                 # import, overdue, invoices:reindex
+├─ Enums/InvoiceStatus.php           # paid / unpaid / partially_paid / overdue
 ├─ Events/ · Listeners/              # InvoicePaid → status + notyfikacja
 ├─ Http/
 │  ├─ Controllers/                   # web + Api + Settings
@@ -240,13 +277,20 @@ app/
 │  └─ Requests/                      # Form Requesty (walidacja)
 ├─ Jobs/                             # GenerateInvoicePdfJob, SendInvoiceEmail
 ├─ Models/                           # Invoice, Invoice/StatusHistory, User
-├─ Observers/InvoiceObserver.php     # audyt statusów
+├─ Observers/InvoiceObserver.php     # audyt + ES + pulse cleanup + cache
 ├─ Policies/InvoicePolicy.php        # autoryzacja na poziomie zasobu
-└─ Services/                         # InvoicePriceCalculator, PdfMaker
+└─ Services/
+   ├─ DashboardStatsService.php      # cache (Memcached)
+   ├─ InvoicePulseService.php        # engagement (Redis)
+   ├─ InvoiceSearchService.php       # full-text (Elasticsearch)
+   ├─ InvoicePriceCalculator.php
+   ├─ OverdueInvoiceService.php
+   └─ PdfMaker.php
+config/elasticsearch.php
 resources/js/pages/                  # widoki Inertia/Vue
 routes/                              # web, invoices, api, settings, channels
-docker/                             # PHP-FPM, Apache, konfiguracje
-tests/                              # PHPUnit (Feature + Unit)
+docker/                              # PHP-FPM, Apache, PXC, ProxySQL
+tests/                               # PHPUnit (Feature + Unit)
 ```
 
 ---

@@ -10,6 +10,7 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
 - php - 8.5
+- elasticsearch/elasticsearch - v8
 - inertiajs/inertia-laravel (INERTIA_LARAVEL) - v3
 - laravel/fortify (FORTIFY) - v1
 - laravel/framework (LARAVEL) - v13
@@ -22,6 +23,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - laravel/pint (PINT) - v1
 - laravel/sail (SAIL) - v1
 - phpunit/phpunit (PHPUNIT) - v12
+- predis/predis - v3
 - @inertiajs/vue3 (INERTIA_VUE) - v3
 - tailwindcss (TAILWINDCSS) - v4
 - vue (VUE) - v3
@@ -36,21 +38,28 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - Main services in the stack:
   - `php` - application container, working directory `/var/www/html`
   - `httpd` - Apache frontend with SSL termination
-  - `db` - MariaDB 10.11
-  - `redis` - Redis for cache, queue, and sessions
+  - `pxc-node1` / `pxc-node2` / `pxc-node3` - Percona XtraDB Cluster 8.0
+  - `proxysql` - SQL proxy in front of PXC (app hostname `mariadb`)
+  - `redis` - queues, sessions, and Invoice Pulse (engagement ranking)
+  - `memcached` - application cache (`CACHE_STORE=memcached`)
+  - `elasticsearch` - invoice full-text / prefix search (no host port published; Docker network only)
   - `mailhog` - local mail inbox UI
 - Host ports:
   - app HTTP: `http://localhost:8080`
   - app HTTPS: `https://localhost:8443`
-  - Vite dev server: `http://localhost:5173`
+  - Vite dev server: `http://localhost:5173` (container also exposes HTTPS Vite on 5173 in local setup)
   - MailHog UI: `http://localhost:8025`
 - Internal container hostnames used by the app configuration:
-  - database: `mariadb`
+  - database: `mariadb` (ProxySQL)
   - redis: `redis`
+  - memcached: `memcached`
+  - elasticsearch: `elasticsearch` (`ELASTICSEARCH_HOST=http://elasticsearch:9200`)
   - mail: `mailhog`
   - PHP FPM hostname behind Apache: `php-fpm`
-- The app's `.env` / `.env.example` is configured for container networking (`DB_HOST=mariadb`, `REDIS_HOST=redis`, `MAIL_HOST=mailhog`), so preserve container-first assumptions when troubleshooting.
+- The app's `.env` / `.env.example` is configured for container networking (`DB_HOST=mariadb`, `REDIS_HOST=redis`, `MEMCACHED_HOST=memcached`, `MAIL_HOST=mailhog`, `ELASTICSEARCH_HOST=http://elasticsearch:9200`), so preserve container-first assumptions when troubleshooting.
 - Queue workers and Reverb are not automatically managed by this compose file for local development; start them explicitly when needed.
+- After first boot (or mapping changes), rebuild the invoices search index with `php artisan invoices:reindex --fresh`.
+- Local Elasticsearch disables disk allocation watermarks in `compose.yaml` so a nearly-full host disk does not leave the cluster red / hang index operations.
 
 ## Preferred Container Command Patterns
 
@@ -60,17 +69,19 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - Use `docker compose up -d --build` to build and start the local stack.
 - Use `docker compose ps` to inspect service state.
 - Use `docker compose logs <service>` when debugging container startup or runtime issues.
-- Use `docker compose exec db mariadb -ularavel -plaravel laravel` for direct MariaDB access only when application-level or Boost tools are not a better fit.
+- Prefer ProxySQL / app-level queries; for cluster SQL debugging use `docker compose exec proxysql` or a PXC node when needed.
 - Use `docker compose exec redis redis-cli` for Redis inspection when needed.
+- Use `docker compose exec php curl -sS http://elasticsearch:9200/_cluster/health?pretty` to inspect Elasticsearch when needed.
 - The repository includes a `sail` wrapper script, but this project is not using a stock Sail service layout. Treat direct `docker compose` commands as the safer default unless the wrapper is already known to be configured correctly for the current environment.
 
 ## Local Workflow Notes
 
-- First-time local setup is container-oriented: bring up the stack, then run install / key generation / migrations / asset build inside the app container.
+- First-time local setup is container-oriented: bring up the stack, then run install / key generation / migrations / `invoices:reindex --fresh` / asset build inside the app container.
 - If frontend changes are not visible, check whether Vite is running in the container or whether a production build is needed.
 - Apache terminates HTTPS on `8443`; WebSocket traffic for Reverb is proxied through Apache to the PHP container.
 - Mail delivery in local development should be verified through MailHog, not a real SMTP provider.
 - When sharing or testing URLs locally, prefer the exposed host ports above rather than internal container addresses unless a command runs entirely inside the Docker network.
+- Invoice search depends on Elasticsearch; Invoice Pulse and queue/session traffic depend on Redis; dashboard cache depends on Memcached.
 
 ## Skills Activation
 
@@ -283,4 +294,7 @@ This environment runs the app via the repo's Docker Compose stack (see the "Loca
 - Sent mail (e.g. Fortify email verification) is captured by MailHog at `http://localhost:8025`.
 
 ### Testing
-- The PHPUnit suite uses in-memory SQLite (see `phpunit.xml`) and needs no running services; `XDEBUG_MODE=off php artisan test --compact` passes. Feature tests that render Inertia pages require `public/build/manifest.json`, so run `npm run build` once before running the suite (or keep `npm run dev` running).
+- The PHPUnit suite uses in-memory SQLite (see `phpunit.xml`) for the database and needs no DB services.
+- Feature tests for Invoice Pulse / Invoice Search skip when Redis or Elasticsearch are unreachable; keep those compose services up to exercise them (`REDIS_*` and `ELASTICSEARCH_*` are set in `phpunit.xml` for the Docker network).
+- `XDEBUG_MODE=off php artisan test --compact` is the preferred invocation.
+- Feature tests that render Inertia pages require `public/build/manifest.json`, so run `npm run build` once before running the suite (or keep `npm run dev` running).

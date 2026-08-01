@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\InvoicePaid;
+use App\Http\Requests\SearchInvoicesRequest;
 use App\Http\Requests\SendInvoiceRequest;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Requests\UpdateInvoiceRequest;
@@ -11,6 +12,7 @@ use App\Jobs\SendInvoiceEmail;
 use App\Models\Invoice;
 use App\Services\InvoicePriceCalculator;
 use App\Services\InvoicePulseService;
+use App\Services\InvoiceSearchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -20,25 +22,48 @@ class InvoiceController extends Controller
     public function __construct(
         private InvoicePriceCalculator $invoicePriceCalculator,
         private InvoicePulseService $invoicePulseService,
+        private InvoiceSearchService $invoiceSearchService,
     ) {}
 
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(SearchInvoicesRequest $request)
     {
         $perPage = 10;
-        $page = request()->input('page', 1);
+        $page = (int) $request->input('page', 1);
+        $query = $request->searchQuery();
+
+        if ($query !== '') {
+            $invoices = $this->invoiceSearchService->ping()
+                ? $this->invoiceSearchService->search(
+                    (int) $request->user()->id,
+                    $query,
+                    $perPage,
+                    $page,
+                )
+                : $request->user()->invoices()
+                    ->where(function ($builder) use ($query): void {
+                        $builder
+                            ->where('number', 'like', '%'.$query.'%')
+                            ->orWhere('status', 'like', '%'.$query.'%');
+                    })
+                    ->paginate($perPage, page: $page);
+        } else {
+            $invoices = $request->user()->invoices()->paginate($perPage, page: $page);
+        }
+
         // if is ajax request and no inertia request, return the invoices
-        if (request()->ajax() && ! request()->inertia()) {
+        if ($request->ajax() && ! $request->inertia()) {
             return response()->json([
-                'invoicesPagination' => auth()->user()->invoices()->paginate($perPage, page: $page),
+                'invoicesPagination' => $invoices,
+                'searchQuery' => $query,
             ]);
         }
-        $invoices = auth()->user()->invoices()->paginate($perPage, page: $page);
 
         return Inertia::render('invoices/Index', [
             'invoicesPagination' => $invoices,
+            'searchQuery' => $query,
         ]);
     }
 

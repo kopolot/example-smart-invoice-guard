@@ -5,12 +5,14 @@ namespace App\Observers;
 use App\Models\Invoice;
 use App\Services\DashboardStatsService;
 use App\Services\InvoicePulseService;
+use App\Services\InvoiceSearchService;
 
 class InvoiceObserver
 {
     public function __construct(
         private DashboardStatsService $dashboardStatsService,
         private InvoicePulseService $invoicePulseService,
+        private InvoiceSearchService $invoiceSearchService,
     ) {}
 
     /**
@@ -23,6 +25,7 @@ class InvoiceObserver
         ]);
 
         $this->invalidateDashboard($invoice);
+        $this->syncSearchIndex($invoice);
     }
 
     /**
@@ -37,6 +40,7 @@ class InvoiceObserver
         }
 
         $this->invalidateDashboard($invoice);
+        $this->syncSearchIndex($invoice);
     }
 
     /**
@@ -46,6 +50,7 @@ class InvoiceObserver
     {
         $this->invalidateDashboard($invoice);
         $this->invoicePulseService->forget($invoice);
+        $this->forgetSearchIndex($invoice);
     }
 
     /**
@@ -54,6 +59,7 @@ class InvoiceObserver
     public function restored(Invoice $invoice): void
     {
         $this->invalidateDashboard($invoice);
+        $this->syncSearchIndex($invoice);
     }
 
     /**
@@ -63,10 +69,29 @@ class InvoiceObserver
     {
         $this->invalidateDashboard($invoice);
         $this->invoicePulseService->forget($invoice);
+        $this->forgetSearchIndex($invoice);
     }
 
     private function invalidateDashboard(Invoice $invoice): void
     {
         $this->dashboardStatsService->forgetForUser((int) $invoice->user_id);
+    }
+
+    private function syncSearchIndex(Invoice $invoice): void
+    {
+        try {
+            $this->invoiceSearchService->index($invoice);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    private function forgetSearchIndex(Invoice $invoice): void
+    {
+        try {
+            $this->invoiceSearchService->forget($invoice);
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 }

@@ -67,6 +67,34 @@ services:
         networks:
             - app
 
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.15.5
+        hostname: elasticsearch
+        environment:
+            - discovery.type=single-node
+            - xpack.security.enabled=false
+            - xpack.security.http.ssl.enabled=false
+            - ES_JAVA_OPTS=-Xms512m -Xmx512m
+            - cluster.name=smart-invoice-guard
+            - cluster.routing.allocation.disk.threshold_enabled=false
+            - cluster.routing.allocation.disk.watermark.low=98%
+            - cluster.routing.allocation.disk.watermark.high=99%
+            - cluster.routing.allocation.disk.watermark.flood_stage=99%
+        volumes:
+            - elasticsearch_data:/usr/share/elasticsearch/data
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "curl -fsS http://localhost:9200/_cluster/health || exit 1",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 30
+            start_period: 40s
+        networks:
+            - app
+
     mailhog:
         image: mailhog/mailhog:latest
         hostname: mailhog
@@ -146,6 +174,7 @@ services:
 volumes:
     php_data:
     redis_data:
+    elasticsearch_data:
     pxc_data_node1:
 
 networks:

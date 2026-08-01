@@ -34,6 +34,9 @@
         <env name="REDIS_PORT" value="6379" />
         <env name="REDIS_DB" value="15" />
         <env name="REDIS_PREFIX" value="testing-" />
+        <env name="ELASTICSEARCH_ENABLED" value="true" />
+        <env name="ELASTICSEARCH_HOST" value="http://elasticsearch:9200" />
+        <env name="ELASTICSEARCH_INVOICES_INDEX" value="invoices_testing" />
         <env name="PULSE_ENABLED" value="false" />
         <env name="TELESCOPE_ENABLED" value="false" />
         <env name="NIGHTWATCH_ENABLED" value="false" />

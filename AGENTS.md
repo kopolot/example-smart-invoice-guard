@@ -42,7 +42,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
   - `pxc-node1` / `pxc-node2` / `pxc-node3` - Percona XtraDB Cluster 8.0 (persistent volumes on all three; `pxc-node1` force-bootstraps after unclean full-cluster stops via `docker/pxc-node1-entrypoint.sh`)
   - `proxysql` - SQL proxy in front of PXC (app hostname `mariadb`)
   - `redis` - sessions and Invoice Pulse (engagement ranking)
-  - `rabbitmq` - application queues (`QUEUE_CONNECTION=rabbitmq`; management UI on host port 15672)
+  - `rabbitmq` - application queues (connections `rabbitmq-invoices` / `rabbitmq-email`; management UI on host port 15672)
   - `memcached` - application cache (`CACHE_STORE=memcached`)
   - `elasticsearch` - invoice full-text / prefix search (no host port published; Docker network only)
   - `mailhog` - local mail inbox UI
@@ -293,7 +293,7 @@ This environment runs the app via the repo's Docker Compose stack (see the "Loca
 
 ### Dev servers (start manually inside the `php` container)
 - Frontend assets: `npm run dev` (Vite HMR on port 5173). Without it you must have a `npm run build` output or you'll hit a Vite manifest error. `npm run dev` creates `public/hot`; delete it to fall back to built assets.
-- Jobs: run `php artisan rabbitmq:setup-topology` once (use `--fresh` after changing DLX args), then `php artisan queue:work --queue=pdf,email,default` (or `php artisan rabbitmq:consume`) for PDF/email jobs. Queue is RabbitMQ-backed and not started by compose.
+- Jobs: run `php artisan rabbitmq:setup-topology` once (use `--fresh` after changing DLX/exchange args). PDF jobs use connection `rabbitmq-invoices` (exchange `invoices.jobs`, DLX `invoices.dlx`); email jobs use `rabbitmq-email` (`email.jobs` / `email.dlx`). `invoices.events` (topic) is declared for future pub/sub only. Start workers: `php artisan queue:work rabbitmq-invoices --queue=pdf` and `php artisan queue:work rabbitmq-email --queue=email`. Queue workers are not started by compose.
 - Reverb (`php artisan reverb:start`) is optional; without it the browser console/network will show harmless 503s from Echo trying to reach the WebSocket endpoint.
 
 ### HTTPS / browser access

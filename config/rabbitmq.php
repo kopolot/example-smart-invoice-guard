@@ -4,47 +4,53 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Queue Connection
+    | Broker Connection (topology setup)
     |--------------------------------------------------------------------------
     |
-    | Topology setup uses this Laravel queue connection name.
+    | Used by rabbitmq:setup-topology to talk to the broker. Domain job
+    | publishing uses rabbitmq-invoices / rabbitmq-email instead.
     |
     */
 
     'connection' => env('RABBITMQ_QUEUE_CONNECTION', 'rabbitmq'),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Dead Letter Exchange
-    |--------------------------------------------------------------------------
-    |
-    | After a job exhausts its retries, the RabbitMQ driver rejects the message
-    | (requeue=false). Queues declared with x-dead-letter-* route those messages
-    | here. Intermediate retries use per-delay TTL queues (also DLX-based).
-    |
-    */
-
-    'dlx' => [
-        'exchange' => env('RABBITMQ_DLX_EXCHANGE', 'invoices.dlx'),
-        'type' => env('RABBITMQ_DLX_TYPE', 'direct'),
-    ],
-
     'failed_routing_key' => env('RABBITMQ_FAILED_ROUTING_KEY', '%s.failed'),
 
     /*
     |--------------------------------------------------------------------------
-    | Application Queues
+    | Domains
     |--------------------------------------------------------------------------
     |
-    | Work queues declared by `rabbitmq:setup-topology` with DLX arguments.
-    | Keep this list in sync with job onQueue() names.
+    | Each domain has its own Laravel queue connection, jobs exchange (direct),
+    | and DLX. The invoices domain also reserves invoices.events (topic) for
+    | future domain-event pub/sub — declared by topology, no bindings yet.
     |
     */
 
-    'queues' => [
-        'default',
-        'pdf',
-        'email',
+    'domains' => [
+
+        'invoices' => [
+            'connection' => 'rabbitmq-invoices',
+            'jobs_exchange' => env('RABBITMQ_INVOICES_JOBS_EXCHANGE', 'invoices.jobs'),
+            'jobs_exchange_type' => 'direct',
+            'events_exchange' => env('RABBITMQ_INVOICES_EVENTS_EXCHANGE', 'invoices.events'),
+            'events_exchange_type' => 'topic',
+            'dlx' => env('RABBITMQ_INVOICES_DLX', 'invoices.dlx'),
+            'queues' => [
+                'pdf',
+            ],
+        ],
+
+        'email' => [
+            'connection' => 'rabbitmq-email',
+            'jobs_exchange' => env('RABBITMQ_EMAIL_JOBS_EXCHANGE', 'email.jobs'),
+            'jobs_exchange_type' => 'direct',
+            'dlx' => env('RABBITMQ_EMAIL_DLX', 'email.dlx'),
+            'queues' => [
+                'email',
+            ],
+        ],
+
     ],
 
 ];

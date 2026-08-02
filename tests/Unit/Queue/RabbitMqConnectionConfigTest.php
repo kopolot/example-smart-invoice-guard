@@ -22,7 +22,28 @@ class RabbitMqConnectionConfigTest extends TestCase
         $this->assertArrayHasKey('user', $connection['hosts'][0]);
         $this->assertArrayHasKey('password', $connection['hosts'][0]);
         $this->assertArrayHasKey('vhost', $connection['hosts'][0]);
-        $this->assertTrue((bool) $connection['options']['queue']['reroute_failed']);
-        $this->assertSame('invoices.dlx', $connection['options']['queue']['failed_exchange']);
+    }
+
+    #[Test]
+    public function domain_rabbitmq_connections_use_separate_jobs_and_dlx_exchanges(): void
+    {
+        $invoices = config('queue.connections.rabbitmq-invoices');
+        $email = config('queue.connections.rabbitmq-email');
+
+        $this->assertSame('rabbitmq', $invoices['driver']);
+        $this->assertSame('pdf', $invoices['queue']);
+        $this->assertTrue((bool) $invoices['options']['queue']['reroute_failed']);
+        $this->assertSame('invoices.jobs', $invoices['options']['queue']['exchange']);
+        $this->assertSame('direct', $invoices['options']['queue']['exchange_type']);
+        $this->assertSame('invoices.dlx', $invoices['options']['queue']['failed_exchange']);
+        $this->assertSame('%s.failed', $invoices['options']['queue']['failed_routing_key']);
+
+        $this->assertSame('rabbitmq', $email['driver']);
+        $this->assertSame('email', $email['queue']);
+        $this->assertTrue((bool) $email['options']['queue']['reroute_failed']);
+        $this->assertSame('email.jobs', $email['options']['queue']['exchange']);
+        $this->assertSame('direct', $email['options']['queue']['exchange_type']);
+        $this->assertSame('email.dlx', $email['options']['queue']['failed_exchange']);
+        $this->assertSame('%s.failed', $email['options']['queue']['failed_routing_key']);
     }
 }

@@ -9,24 +9,27 @@ use Tests\TestCase;
 class RabbitMqTopologyConfigTest extends TestCase
 {
     #[Test]
-    public function topology_config_maps_failed_queues_from_work_queues(): void
+    public function topology_config_splits_invoices_and_email_domains(): void
     {
         $topology = new RabbitMqTopology;
+        $invoices = $topology->domain('invoices');
+        $email = $topology->domain('email');
 
-        $this->assertSame('invoices.dlx', $topology->deadLetterExchange());
-        $this->assertContains('pdf', $topology->queues());
-        $this->assertContains('email', $topology->queues());
+        $this->assertSame('rabbitmq-invoices', $invoices['connection']);
+        $this->assertSame('invoices.jobs', $invoices['jobs_exchange']);
+        $this->assertSame('direct', $invoices['jobs_exchange_type']);
+        $this->assertSame('invoices.events', $invoices['events_exchange']);
+        $this->assertSame('topic', $invoices['events_exchange_type']);
+        $this->assertSame('invoices.dlx', $invoices['dlx']);
+        $this->assertContains('pdf', $invoices['queues']);
+
+        $this->assertSame('rabbitmq-email', $email['connection']);
+        $this->assertSame('email.jobs', $email['jobs_exchange']);
+        $this->assertSame('email.dlx', $email['dlx']);
+        $this->assertContains('email', $email['queues']);
+        $this->assertArrayNotHasKey('events_exchange', $email);
+
         $this->assertSame('pdf.failed', $topology->failedQueueName('pdf'));
         $this->assertSame('email.failed', $topology->failedRoutingKey('email'));
-    }
-
-    #[Test]
-    public function rabbitmq_queue_driver_reroutes_failed_jobs_to_dlx(): void
-    {
-        $options = config('queue.connections.rabbitmq.options.queue');
-
-        $this->assertTrue((bool) $options['reroute_failed']);
-        $this->assertSame('invoices.dlx', $options['failed_exchange']);
-        $this->assertSame('%s.failed', $options['failed_routing_key']);
     }
 }

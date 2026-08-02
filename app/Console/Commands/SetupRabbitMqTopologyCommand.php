@@ -8,7 +8,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('rabbitmq:setup-topology {--fresh : Delete and recreate work queues so DLX arguments are applied}')]
-#[Description('Declare RabbitMQ work queues, dead-letter exchange, and failed queues')]
+#[Description('Declare RabbitMQ domain jobs exchanges, DLX, failed queues, and reserved topic exchanges')]
 class SetupRabbitMqTopologyCommand extends Command
 {
     public function __construct(private RabbitMqTopology $topology)
@@ -32,7 +32,13 @@ class SetupRabbitMqTopologyCommand extends Command
             return self::FAILURE;
         }
 
-        $this->components->info('Declared dead-letter exchange ['.$result['exchange'].'].');
+        $this->components->info('Jobs exchanges: '.implode(', ', $result['jobs_exchanges']));
+        $this->components->info('DLX exchanges: '.implode(', ', $result['dlx_exchanges']));
+
+        if ($result['events_exchanges'] !== []) {
+            $this->components->info('Reserved events exchanges (topic): '.implode(', ', $result['events_exchanges']));
+        }
+
         $this->components->info('Work queues: '.implode(', ', $result['queues']));
         $this->components->info('Failed queues: '.implode(', ', $result['failed_queues']));
 

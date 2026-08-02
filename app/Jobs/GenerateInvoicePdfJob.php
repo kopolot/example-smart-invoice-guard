@@ -2,25 +2,31 @@
 
 namespace App\Jobs;
 
-use App\Models\Invoice;
 use App\Events\InvoicePdfGenerated;
+use App\Models\Invoice;
+use App\Services\PdfMaker;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use App\Services\PdfMaker;
 
 class GenerateInvoicePdfJob implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    /**
+     * @var list<int>
+     */
+    public array $backoff = [1, 5, 10];
 
     /**
      * Create a new job instance.
      */
     public function __construct(private Invoice $invoice)
     {
-        //
+        $this->onQueue('pdf');
     }
 
     /**
@@ -30,7 +36,7 @@ class GenerateInvoicePdfJob implements ShouldQueue
     {
         // not perfect but it works for now
         // TODO: private storage and PdfFileController to handle the pdf file
-        $path = 'invoices/' . $this->invoice->user_id . '/' . $this->invoice->id . '_' . date('Y-m-d_H-i-s') . '.pdf';
+        $path = 'invoices/'.$this->invoice->user_id.'/'.$this->invoice->id.'_'.date('Y-m-d_H-i-s').'.pdf';
         try {
             throw_unless(
                 $pdfMaker->make($this->invoice, $path),

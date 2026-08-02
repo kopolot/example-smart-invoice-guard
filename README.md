@@ -1,8 +1,8 @@
 # Smart Invoice Guard
 
-Demonstracyjna aplikacja do zarządzania fakturami, zbudowana w **Laravel 13 + Inertia.js v3 + Vue 3**. Projekt powstał jako portfolio/showcase pod rozmowę rekrutacyjną — celem nie jest "kolejny CRUD", lecz pokazanie **świadomych decyzji inżynierskich**: idempotencji płatności, kolejkowanych zadań, szyfrowania danych wrażliwych, audytu zmian statusu, rate limitingu zależnego od tokenu, importu strumieniowego, cache (Memcached), engagement trackingu (Redis), wyszukiwania pełnotekstowego (Elasticsearch) i pełnego środowiska Docker (PXC + ProxySQL).
+Demonstracyjna aplikacja do zarządzania fakturami, zbudowana w **Laravel 13 + Inertia.js v3 + Vue 3**. Projekt powstał jako portfolio/showcase pod rozmowę rekrutacyjną — celem nie jest "kolejny CRUD", lecz pokazanie **świadomych decyzji inżynierskich**: idempotencji płatności, kolejkowanych zadań (RabbitMQ), szyfrowania danych wrażliwych, audytu zmian statusu, rate limitingu zależnego od tokenu, importu strumieniowego, cache (Memcached), engagement trackingu (Redis), wyszukiwania pełnotekstowego (Elasticsearch) i pełnego środowiska Docker (PXC + ProxySQL).
 
-> Stack: PHP 8.5 · Laravel 13 · Inertia v3 · Vue 3 · Tailwind v4 · Percona XtraDB Cluster · ProxySQL · Redis · Memcached · Elasticsearch · DomPDF · Reverb · Sanctum · Fortify · Wayfinder
+> Stack: PHP 8.5 · Laravel 13 · Inertia v3 · Vue 3 · Tailwind v4 · Percona XtraDB Cluster · ProxySQL · RabbitMQ · Redis · Memcached · Elasticsearch · DomPDF · Reverb · Sanctum · Fortify · Wayfinder
 
 ---
 
@@ -26,7 +26,7 @@ Demonstracyjna aplikacja do zarządzania fakturami, zbudowana w **Laravel 13 + I
 | Obszar | Co pokazuje |
 | --- | --- |
 | **Idempotentne płatności** | Dedykowany middleware `EnsureRequestIsIdempotent` wykorzystujący atomowe `Cache::add` — zabezpiecza przed podwójnym opłaceniem faktury przy podwójnym kliknięciu / retry. |
-| **Kolejkowane zadania** | Generowanie PDF oraz wysyłka e‑maili jako joby (`ShouldQueue`). Wysyłka jest dodatkowo `ShouldBeUnique` + chroniona `lockForUpdate()` i `DB::afterCommit()`. |
+| **Kolejkowane zadania** | Generowanie PDF oraz wysyłka e‑maili jako joby (`ShouldQueue`) przez RabbitMQ. Wysyłka jest dodatkowo `ShouldBeUnique` + chroniona `lockForUpdate()` i `DB::afterCommit()`. |
 | **Szyfrowanie danych wrażliwych** | NIP (`tax_number`) szyfrowany w spoczynku przez własny cast `EncryptedData` (Laravel Crypt). |
 | **Audyt statusów** | `InvoiceObserver` automatycznie zapisuje każdą zmianę statusu do tabeli `status_histories`. |
 | **Event / Listener** | Opłacenie faktury (`InvoicePaid`) → aktualizacja statusu + powiadomienie użytkownika. |
@@ -70,7 +70,7 @@ usunięcie ──► Observer: czyszczenie pulse Redis + dokumentu ES + cache da
 - **`lockForUpdate()` + `afterCommit()`** w wysyłce e‑maila — gwarancja, że faktura zostanie wysłana dokładnie raz nawet przy równoległych workerach, a mail wychodzi dopiero po zatwierdzeniu transakcji.
 - **Observer zamiast logiki w kontrolerze** — historia statusów, indeks wyszukiwania i cache są spójne niezależnie od miejsca zmiany (kontroler, import, listener).
 - **Cast szyfrujący** — dane wrażliwe są przezroczyście szyfrowane/odszyfrowywane, logika modelu pozostaje czysta.
-- **Redis vs Memcached vs Elasticsearch** — celowe rozdzielenie ról: Memcached = ogólny cache, Redis = struktury danych (pulse / kolejki / sesje), Elasticsearch = full-text + prefix search.
+- **RabbitMQ vs Redis vs Memcached vs Elasticsearch** — celowe rozdzielenie ról: RabbitMQ = kolejki jobów, Memcached = ogólny cache, Redis = struktury danych (pulse / sesje), Elasticsearch = full-text + prefix search.
 
 ---
 
@@ -82,7 +82,8 @@ usunięcie ──► Observer: czyszczenie pulse Redis + dokumentu ES + cache da
 - Laravel Reverb (WebSockets), Wayfinder (typowane trasy)
 - barryvdh/laravel-dompdf (generowanie PDF)
 - `elasticsearch/elasticsearch` (oficjalny klient PHP)
-- Percona XtraDB Cluster 8.0 + ProxySQL, Redis 7, Memcached 1.6, Elasticsearch 8.15
+- Percona XtraDB Cluster 8.0 + ProxySQL, RabbitMQ 4, Redis 7, Memcached 1.6, Elasticsearch 8.15
+- `vladimir-yuldashev/laravel-queue-rabbitmq` (driver AMQP)
 
 **Frontend**
 - Inertia.js v3 + Vue 3 (SPA bez własnego API)
@@ -97,7 +98,7 @@ usunięcie ──► Observer: czyszczenie pulse Redis + dokumentu ES + cache da
 
 ## Uruchomienie (Docker)
 
-Środowisko zawiera: PHP‑FPM, Nginx, PXC (3 węzły) + ProxySQL, Redis, Memcached, Elasticsearch oraz MailHog.
+Środowisko zawiera: PHP‑FPM, Nginx, PXC (3 węzły) + ProxySQL, RabbitMQ, Redis, Memcached, Elasticsearch oraz MailHog.
 
 ```bash
 # 1. Zbuduj i wystartuj kontenery
@@ -115,8 +116,10 @@ php artisan invoices:reindex --fresh   # indeks Elasticsearch
 npm install
 npm run build
 
-# 4. Worker kolejki (osobny terminal w kontenerze)
-php artisan queue:work & php artisan reverb:start &
+# 4. Topologia RabbitMQ (DLX + kolejki pdf/email) i worker
+php artisan rabbitmq:setup-topology --fresh
+php artisan queue:work --queue=pdf,email,default & php artisan reverb:start &
+# alternatywnie (basic_consume, zwykle szybsze): php artisan rabbitmq:consume pdf
 ```
 
 Po starcie:
@@ -126,6 +129,7 @@ Po starcie:
 | Aplikacja (HTTP) | http://localhost:8080 |
 | Aplikacja (HTTPS) | https://localhost:8443 |
 | MailHog (skrzynka) | http://localhost:8025 |
+| RabbitMQ management | http://localhost:15672 (`laravel` / `laravel`) |
 | Vite (dev) | https://localhost:5173 |
 | Elasticsearch | hostname `elasticsearch:9200` (tylko sieć Docker; bez mapowania hosta) |
 

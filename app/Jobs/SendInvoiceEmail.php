@@ -2,26 +2,33 @@
 
 namespace App\Jobs;
 
+use App\Events\InvoiceSent;
+use App\Mail\InvoiceSentMail;
+use App\Models\Invoice;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use App\Models\Invoice;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\InvoiceSentMail;
-use App\Events\InvoiceSent;
 
-class SendInvoiceEmail implements ShouldQueue, ShouldBeUnique
+class SendInvoiceEmail implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    /**
+     * @var list<int>
+     */
+    public array $backoff = [1, 5, 10];
 
     /**
      * Create a new job instance.
      */
     public function __construct(private Invoice $invoice, private string $email)
     {
-        //
+        $this->onQueue('email');
     }
 
     /**
@@ -32,6 +39,7 @@ class SendInvoiceEmail implements ShouldQueue, ShouldBeUnique
         $invoice = $this->invoice;
         if ($invoice->sent_at) {
             Log::info('Invoice already sent', ['invoice_id' => $invoice->id]);
+
             return;
         }
         try {
@@ -53,8 +61,6 @@ class SendInvoiceEmail implements ShouldQueue, ShouldBeUnique
             throw $e;
         }
     }
-
-
 
     public function uniqueId(): string
     {

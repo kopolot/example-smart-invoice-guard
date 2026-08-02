@@ -18,5 +18,6 @@ Route::prefix('invoices')->name('invoices.')->controller(InvoiceController::clas
         Route::patch('/{invoice:id}/send', 'send')->can('view', 'invoice')->name('send');
     });
     Route::patch('/{invoice:id}/pay', 'pay')->name('pay');
-    Route::get('/{invoice:id}/pay', 'showPayForm')->name('pay.form');
+    // Avoid pay.form / pay-form names: Wayfinder would clash with pay.form() helpers.
+    Route::get('/{invoice:id}/pay', 'showPayForm')->name('show-pay');
 });

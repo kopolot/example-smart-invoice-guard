@@ -70,7 +70,8 @@ usunięcie ──► Observer: czyszczenie pulse Redis + dokumentu ES + cache da
 - **`lockForUpdate()` + `afterCommit()`** w wysyłce e‑maila — gwarancja, że faktura zostanie wysłana dokładnie raz nawet przy równoległych workerach, a mail wychodzi dopiero po zatwierdzeniu transakcji.
 - **Observer zamiast logiki w kontrolerze** — historia statusów, indeks wyszukiwania i cache są spójne niezależnie od miejsca zmiany (kontroler, import, listener).
 - **Cast szyfrujący** — dane wrażliwe są przezroczyście szyfrowane/odszyfrowywane, logika modelu pozostaje czysta.
-- **RabbitMQ vs Redis vs Memcached vs Elasticsearch** — celowe rozdzielenie ról: RabbitMQ = kolejki jobów z osobnymi domenami (`invoices.jobs` + `invoices.dlx` vs `email.jobs` + `email.dlx`; `invoices.events` topic zarezerwowany), Memcached = ogólny cache, Redis = struktury danych (pulse / sesje), Elasticsearch = full-text + prefix search.
+- **RabbitMQ vs Redis vs Memcached vs Elasticsearch** — celowe rozdzielenie ról: RabbitMQ = kolejki jobów (`invoices.jobs` / `email.jobs`) + topic eventów lifecycle (`invoices.events` → metrics/audit/webhooks), Memcached = ogólny cache, Redis = struktury danych (pulse / sesje), Elasticsearch = full-text + prefix search.
+- **Laravel Queue ≠ AMQP event bus** — `queue:work` i `laravel-queue-rabbitmq` to model *work queue* (serializowany job PHP), nie pełny message bus. Direct (`invoices.jobs` / `email.jobs`) pasuje do tego natywnie. Topic `invoices.events` robi prawdziwy fan-out w Rabbitcie (jedna publikacja → wiele kolejek; webhooks tylko `invoice.paid`), ale body to nadal ten sam job — stąd jeden `ProcessInvoiceDomainEventJob` rozróżnia side-effect po nazwie skonsumowanej kolejki. Czystsze konsumery (osobne klasy / raw JSON) wymagałyby wielu publishy albo własnego consumera poza ekosystemem Laravel Queue; tu świadomy kompromis: ekosystem (`retries`, `Queue::fake`) vs czysty messaging.
 
 ---
 
@@ -116,12 +117,12 @@ php artisan invoices:reindex --fresh   # indeks Elasticsearch
 npm install
 npm run build
 
-# 4. Topologia RabbitMQ (osobne exchange/DLX dla invoices i email) i workery
+# 4. Topologia RabbitMQ (osobne exchange/DLX + topic events) i workery
 php artisan rabbitmq:setup-topology --fresh
 php artisan queue:work rabbitmq-invoices --queue=pdf &
 php artisan queue:work rabbitmq-email --queue=email &
+php artisan queue:work rabbitmq-invoices-events --queue=invoice.metrics,invoice.audit,invoice.webhooks &
 php artisan reverb:start &
-# invoices.events (topic) jest deklarowany pod przyszłe eventy — bez konsumentów na razie
 ```
 
 Po starcie:

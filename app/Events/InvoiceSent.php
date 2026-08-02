@@ -30,7 +30,7 @@ class InvoiceSent implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('App.Models.User.' . $this->invoice->user_id),
+            new PrivateChannel('App.Models.User.'.$this->invoice->user_id),
         ];
     }
 
@@ -42,5 +42,10 @@ class InvoiceSent implements ShouldBroadcastNow
         return [
             'sent_at' => $this->invoice->sent_at?->toIso8601String(),
         ];
+    }
+
+    public function getInvoice(): Invoice
+    {
+        return $this->invoice;
     }
 }

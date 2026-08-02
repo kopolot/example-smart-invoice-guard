@@ -45,5 +45,11 @@ class RabbitMqConnectionConfigTest extends TestCase
         $this->assertSame('direct', $email['options']['queue']['exchange_type']);
         $this->assertSame('email.dlx', $email['options']['queue']['failed_exchange']);
         $this->assertSame('%s.failed', $email['options']['queue']['failed_routing_key']);
+
+        $events = config('queue.connections.rabbitmq-invoices-events');
+        $this->assertSame('rabbitmq', $events['driver']);
+        $this->assertSame('invoices.events', $events['options']['queue']['exchange']);
+        $this->assertSame('topic', $events['options']['queue']['exchange_type']);
+        $this->assertSame('invoices.dlx', $events['options']['queue']['failed_exchange']);
     }
 }

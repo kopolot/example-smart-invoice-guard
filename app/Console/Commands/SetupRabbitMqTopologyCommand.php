@@ -36,10 +36,15 @@ class SetupRabbitMqTopologyCommand extends Command
         $this->components->info('DLX exchanges: '.implode(', ', $result['dlx_exchanges']));
 
         if ($result['events_exchanges'] !== []) {
-            $this->components->info('Reserved events exchanges (topic): '.implode(', ', $result['events_exchanges']));
+            $this->components->info('Events exchanges (topic): '.implode(', ', $result['events_exchanges']));
         }
 
         $this->components->info('Work queues: '.implode(', ', $result['queues']));
+
+        if ($result['event_queues'] !== []) {
+            $this->components->info('Event queues: '.implode(', ', $result['event_queues']));
+        }
+
         $this->components->info('Failed queues: '.implode(', ', $result['failed_queues']));
 
         if ($result['refreshed'] !== []) {

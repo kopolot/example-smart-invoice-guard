@@ -33,3 +33,5 @@ package-lock.json
 /playwright-report
 /blob-report
 /tests/e2e/.auth
+/storage/app/k6
+/tests/k6/results

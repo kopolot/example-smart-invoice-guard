@@ -97,7 +97,7 @@ usunięcie ──► Observer: czyszczenie pulse Redis + dokumentu ES + cache da
 
 ## Uruchomienie (Docker)
 
-Środowisko zawiera: PHP‑FPM, Apache, PXC (3 węzły) + ProxySQL, Redis, Memcached, Elasticsearch oraz MailHog.
+Środowisko zawiera: PHP‑FPM, Nginx, PXC (3 węzły) + ProxySQL, Redis, Memcached, Elasticsearch oraz MailHog.
 
 ```bash
 # 1. Zbuduj i wystartuj kontenery
@@ -226,7 +226,7 @@ Komenda importuje faktury strumieniowo (stałe zużycie pamięci) i zapisuje bat
 php artisan app:create-test-invoice-import 1000
 
 # 2. Zaimportuj (URL do pliku w storage/app/public, rozmiar batcha opcjonalny)
-php artisan app:import-invoices "https://httpd:8443/storage/test_invoices.csv" 100
+php artisan app:import-invoices "https://nginx:8443/storage/test_invoices.csv" 100
 ```
 
 NIP jest szyfrowany przed zapisem, identycznie jak przez cast modelu.
@@ -248,6 +248,47 @@ php artisan invoices:reindex --fresh
 ```
 
 Testy: `tests/Feature/Invoice/InvoiceSearchTest.php` (pomijane, gdy ES nie odpowiada).
+
+---
+
+## Testy wydajnościowe (k6)
+
+Wymaga lokalnie zainstalowanego [k6](https://grafana.com/docs/k6/latest/) oraz działającego stacku (`https://localhost:8443`).
+
+```bash
+# 1. Przygotuj użytkownika, token Sanctum i korpus faktur
+docker compose exec -T php php artisan db:seed --class=K6Seeder --no-interaction
+# Token musi być świeży po każdym K6Seeder (stary plik = anonimowy limit 5/min → lawina 429)
+export K6_API_TOKEN="$(docker compose exec -T php cat storage/app/private/k6/api-token.txt | tr -d '\r')"
+
+# 2. Smoke (szybki health-check)
+npm run test:k6:smoke
+# albo: k6 run --insecure-skip-tls-verify tests/k6/smoke.js
+
+# 3. Load (web browse + API PDF ~30 req/min)
+npm run test:k6:load
+
+# 4. Stress API (powyżej limitu 60/min — oczekiwane 429)
+npm run test:k6:stress-api
+```
+
+Scenariusze w `tests/k6/`:
+
+| Skrypt | Cel |
+| --- | --- |
+| `smoke.js` | Publiczne `/`, login Fortify, dashboard/invoices/search, 1× API PDF |
+| `load.js` | Ramping VUs na UI + constant-arrival-rate na `POST /api/invoice/generate` |
+| `stress-api.js` | Napór na throttle `invoice-api` (200/429, bez 5xx) |
+
+Login Fortify jest limitowany (5/min) — skrypty logują się **raz** w `setup()` i współdzielą sesję między VU.
+Po wcześniejszym 429 (login **lub** `invoice-api`): `docker compose exec php php artisan cache:clear` (limiter w Memcached).
+Przed `test:k6:load` zawsze czyść cache — inaczej bucket 60/min z poprzedniego runu wygeneruje falę 429 na `/api/invoice/generate`.
+
+Zmienne: `K6_BASE_URL`, `K6_EMAIL`, `K6_PASSWORD`, `K6_API_TOKEN`, `K6_API_RATE`, `K6_SMOKE_VUS`, `K6_SMOKE_ITERS`, `K6_LOAD_DURATION`.
+Nie używaj `K6_VUS` / `K6_DURATION` / `K6_ITERATIONS` — to wbudowane override’y opcji k6.
+Certyfikat self-signed: flagi `--insecure-skip-tls-verify` / `insecureSkipTLSVerify` w opcjach skryptów.
+PDF-y z API lądują w `storage/app/public/invoices/` — po intensywnych runach warto posprzątać.
+Jeśli wyszukiwanie ma iść przez Elasticsearch, po seedzie: `php artisan invoices:reindex --fresh`.
 
 ---
 
@@ -289,8 +330,8 @@ app/
 config/elasticsearch.php
 resources/js/pages/                  # widoki Inertia/Vue
 routes/                              # web, invoices, api, settings, channels
-docker/                              # PHP-FPM, Apache, PXC, ProxySQL
-tests/                               # PHPUnit (Feature + Unit)
+docker/                              # PHP-FPM, Nginx, PXC, ProxySQL
+tests/                               # PHPUnit + Playwright e2e + k6
 ```
 
 ---

@@ -37,8 +37,8 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - Prefer running project commands inside the `php` service/container unless there is a specific reason to run them on the host.
 - Main services in the stack:
   - `php` - application container, working directory `/var/www/html`
-  - `httpd` - Apache frontend with SSL termination
-  - `pxc-node1` / `pxc-node2` / `pxc-node3` - Percona XtraDB Cluster 8.0
+  - `nginx` - Nginx frontend with SSL termination
+  - `pxc-node1` / `pxc-node2` / `pxc-node3` - Percona XtraDB Cluster 8.0 (persistent volumes on all three; `pxc-node1` force-bootstraps after unclean full-cluster stops via `docker/pxc-node1-entrypoint.sh`)
   - `proxysql` - SQL proxy in front of PXC (app hostname `mariadb`)
   - `redis` - queues, sessions, and Invoice Pulse (engagement ranking)
   - `memcached` - application cache (`CACHE_STORE=memcached`)
@@ -55,7 +55,8 @@ This application is a Laravel application and its main Laravel ecosystems packag
   - memcached: `memcached`
   - elasticsearch: `elasticsearch` (`ELASTICSEARCH_HOST=http://elasticsearch:9200`)
   - mail: `mailhog`
-  - PHP FPM hostname behind Apache: `php-fpm`
+  - PHP FPM hostname behind Nginx: `php-fpm`
+  - Nginx hostname: `nginx`
 - The app's `.env` / `.env.example` is configured for container networking (`DB_HOST=mariadb`, `REDIS_HOST=redis`, `MEMCACHED_HOST=memcached`, `MAIL_HOST=mailhog`, `ELASTICSEARCH_HOST=http://elasticsearch:9200`), so preserve container-first assumptions when troubleshooting.
 - Queue workers and Reverb are not automatically managed by this compose file for local development; start them explicitly when needed.
 - After first boot (or mapping changes), rebuild the invoices search index with `php artisan invoices:reindex --fresh`.
@@ -78,7 +79,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 
 - First-time local setup is container-oriented: bring up the stack, then run install / key generation / migrations / `invoices:reindex --fresh` / asset build inside the app container.
 - If frontend changes are not visible, check whether Vite is running in the container or whether a production build is needed.
-- Apache terminates HTTPS on `8443`; WebSocket traffic for Reverb is proxied through Apache to the PHP container.
+- Nginx terminates HTTPS on `8443`; WebSocket traffic for Reverb is proxied through Nginx to the PHP container. PHP-FPM pool settings live in `docker/php-fpm.conf` (mounted as `zz-app.conf`).
 - Mail delivery in local development should be verified through MailHog, not a real SMTP provider.
 - When sharing or testing URLs locally, prefer the exposed host ports above rather than internal container addresses unless a command runs entirely inside the Docker network.
 - Invoice search depends on Elasticsearch; Invoice Pulse and queue/session traffic depend on Redis; dashboard cache depends on Memcached.

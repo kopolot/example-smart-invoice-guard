@@ -97,7 +97,7 @@ usunięcie ──► Observer: czyszczenie pulse Redis + dokumentu ES + cache da
 
 ## Uruchomienie (Docker)
 
-Środowisko zawiera: PHP‑FPM, Apache, PXC (3 węzły) + ProxySQL, Redis, Memcached, Elasticsearch oraz MailHog.
+Środowisko zawiera: PHP‑FPM, Nginx, PXC (3 węzły) + ProxySQL, Redis, Memcached, Elasticsearch oraz MailHog.
 
 ```bash
 # 1. Zbuduj i wystartuj kontenery
@@ -226,7 +226,7 @@ Komenda importuje faktury strumieniowo (stałe zużycie pamięci) i zapisuje bat
 php artisan app:create-test-invoice-import 1000
 
 # 2. Zaimportuj (URL do pliku w storage/app/public, rozmiar batcha opcjonalny)
-php artisan app:import-invoices "https://httpd:8443/storage/test_invoices.csv" 100
+php artisan app:import-invoices "https://nginx:8443/storage/test_invoices.csv" 100
 ```
 
 NIP jest szyfrowany przed zapisem, identycznie jak przez cast modelu.
@@ -289,7 +289,7 @@ app/
 config/elasticsearch.php
 resources/js/pages/                  # widoki Inertia/Vue
 routes/                              # web, invoices, api, settings, channels
-docker/                              # PHP-FPM, Apache, PXC, ProxySQL
+docker/                              # PHP-FPM, Nginx, PXC, ProxySQL
 tests/                               # PHPUnit (Feature + Unit)
 ```
 

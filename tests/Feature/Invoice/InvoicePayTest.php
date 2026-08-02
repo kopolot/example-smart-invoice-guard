@@ -29,7 +29,7 @@ class InvoicePayTest extends TestCase
 
         $invoice = $this->createUnpaidInvoice();
 
-        $response = $this->get(route('invoices.pay.form', $invoice));
+        $response = $this->get(route('invoices.show-pay', $invoice));
 
         $response->assertOk();
         $response->assertInertia(

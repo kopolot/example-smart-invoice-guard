@@ -145,7 +145,7 @@ class InvoicePulseTest extends TestCase
         ]);
 
         $this->withSession([])
-            ->get(route('invoices.pay.form', $invoice))
+            ->get(route('invoices.show-pay', $invoice))
             ->assertOk()
             ->assertInertia(
                 fn(Assert $page) => $page

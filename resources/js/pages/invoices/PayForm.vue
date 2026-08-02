@@ -1,10 +1,9 @@
 <script setup lang="ts">
+import { pay } from '@/actions/App/Http/Controllers/InvoiceController';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { pay } from '@/routes/invoices';
 import type { Invoice } from '@/types/invoice';
 import { Form, Head } from '@inertiajs/vue3';
-
 
 defineOptions({
     layout: (props: { invoice: Invoice }) => ({

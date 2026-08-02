@@ -175,6 +175,41 @@ return [
             'after_commit' => false,
         ],
 
+        'rabbitmq-invoices-events' => [
+            'driver' => 'rabbitmq',
+            'queue' => env('RABBITMQ_INVOICES_EVENTS_DEFAULT_QUEUE', 'invoice.metrics'),
+            'connection' => 'default',
+            'hosts' => [
+                [
+                    'host' => env('RABBITMQ_HOST', '127.0.0.1'),
+                    'port' => env('RABBITMQ_PORT', 5672),
+                    'user' => env('RABBITMQ_USER', 'guest'),
+                    'password' => env('RABBITMQ_PASSWORD', 'guest'),
+                    'vhost' => env('RABBITMQ_VHOST', '/'),
+                ],
+            ],
+            'options' => [
+                'heartbeat' => (int) env('RABBITMQ_HEARTBEAT', 60),
+                'connection_timeout' => (float) env('RABBITMQ_CONNECTION_TIMEOUT', 3.0),
+                'read_timeout' => (float) env('RABBITMQ_READ_TIMEOUT', 3.0),
+                'write_timeout' => (float) env('RABBITMQ_WRITE_TIMEOUT', 3.0),
+                'channel_rpc_timeout' => (float) env('RABBITMQ_CHANNEL_RPC_TIMEOUT', 0.0),
+                'queue' => [
+                    'reroute_failed' => filter_var(
+                        env('RABBITMQ_REROUTE_FAILED', true),
+                        FILTER_VALIDATE_BOOLEAN
+                    ),
+                    'exchange' => env('RABBITMQ_INVOICES_EVENTS_EXCHANGE', 'invoices.events'),
+                    'exchange_type' => 'topic',
+                    'exchange_routing_key' => '%s',
+                    'failed_exchange' => env('RABBITMQ_INVOICES_DLX', 'invoices.dlx'),
+                    'failed_routing_key' => env('RABBITMQ_FAILED_ROUTING_KEY', '%s.failed'),
+                ],
+            ],
+            'worker' => env('RABBITMQ_WORKER', 'default'),
+            'after_commit' => false,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

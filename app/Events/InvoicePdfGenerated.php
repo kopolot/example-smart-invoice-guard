@@ -30,7 +30,7 @@ class InvoicePdfGenerated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('App.Models.User.' . $this->invoice->user_id),
+            new PrivateChannel('App.Models.User.'.$this->invoice->user_id),
         ];
     }
 
@@ -43,5 +43,10 @@ class InvoicePdfGenerated implements ShouldBroadcastNow
             'pdf_path' => $this->invoice->pdf_path,
             'pdf_url' => $this->invoice->pdf_url,
         ];
+    }
+
+    public function getInvoice(): Invoice
+    {
+        return $this->invoice;
     }
 }

@@ -38,6 +38,12 @@ class SetupRabbitMqTopologyTest extends TestCase
                 $this->assertTrue($queue->isQueueExists($name));
                 $this->assertTrue($queue->isQueueExists($topology->failedQueueName($name)));
             }
+
+            foreach ($domain['event_queues'] ?? [] as $eventQueue) {
+                $name = (string) $eventQueue['name'];
+                $this->assertTrue($queue->isQueueExists($name));
+                $this->assertTrue($queue->isQueueExists($topology->failedQueueName($name)));
+            }
         }
     }
 

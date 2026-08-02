@@ -2,16 +2,22 @@
 
 namespace App\Providers;
 
+use App\Events\InvoicePaid;
+use App\Events\InvoicePdfGenerated;
+use App\Events\InvoiceSent;
+use App\Listeners\PublishInvoiceDomainEvent;
+use App\Models\Invoice;
+use App\Observers\InvoiceObserver;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Http\Request;
-use Illuminate\Cache\RateLimiting\Limit;
-use App\Observers\InvoiceObserver;
-use App\Models\Invoice;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
             $userId = null;
 
             if ($token = $request->bearerToken()) {
-                $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+                $accessToken = PersonalAccessToken::findToken($token);
 
                 if ($accessToken) {
                     $userId = $accessToken->tokenable_id;
@@ -45,6 +51,12 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Invoice::observe(InvoiceObserver::class);
+
+        Event::listen([
+            InvoicePdfGenerated::class,
+            InvoiceSent::class,
+            InvoicePaid::class,
+        ], PublishInvoiceDomainEvent::class);
     }
 
     /**
@@ -59,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Password::defaults(
-            fn(): ?Password => app()->isProduction()
+            fn (): ?Password => app()->isProduction()
             ? Password::min(12)
                 ->mixedCase()
                 ->letters()

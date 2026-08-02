@@ -20,8 +20,14 @@ class RabbitMqTopologyConfigTest extends TestCase
         $this->assertSame('direct', $invoices['jobs_exchange_type']);
         $this->assertSame('invoices.events', $invoices['events_exchange']);
         $this->assertSame('topic', $invoices['events_exchange_type']);
+        $this->assertSame('rabbitmq-invoices-events', $invoices['events_connection']);
         $this->assertSame('invoices.dlx', $invoices['dlx']);
         $this->assertContains('pdf', $invoices['queues']);
+
+        $eventQueueNames = array_column($invoices['event_queues'], 'name');
+        $this->assertContains('invoice.metrics', $eventQueueNames);
+        $this->assertContains('invoice.audit', $eventQueueNames);
+        $this->assertContains('invoice.webhooks', $eventQueueNames);
 
         $this->assertSame('rabbitmq-email', $email['connection']);
         $this->assertSame('email.jobs', $email['jobs_exchange']);
@@ -30,6 +36,6 @@ class RabbitMqTopologyConfigTest extends TestCase
         $this->assertArrayNotHasKey('events_exchange', $email);
 
         $this->assertSame('pdf.failed', $topology->failedQueueName('pdf'));
-        $this->assertSame('email.failed', $topology->failedRoutingKey('email'));
+        $this->assertSame('invoice.metrics.failed', $topology->failedRoutingKey('invoice.metrics'));
     }
 }

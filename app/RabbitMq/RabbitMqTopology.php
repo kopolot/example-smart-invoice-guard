@@ -51,13 +51,14 @@ class RabbitMqTopology
     }
 
     /**
-     * Declare per-domain jobs exchanges, DLX, failed queues, work queues, and reserved topic exchanges.
+     * Declare per-domain jobs exchanges, DLX, failed queues, work queues, and topic event queues.
      *
      * @return array{
      *     jobs_exchanges: list<string>,
      *     events_exchanges: list<string>,
      *     dlx_exchanges: list<string>,
      *     queues: list<string>,
+     *     event_queues: list<string>,
      *     failed_queues: list<string>,
      *     refreshed: list<string>
      * }
@@ -69,6 +70,7 @@ class RabbitMqTopology
         $eventsExchanges = [];
         $dlxExchanges = [];
         $declaredQueues = [];
+        $declaredEventQueues = [];
         $declaredFailedQueues = [];
         $refreshed = [];
 
@@ -85,6 +87,7 @@ class RabbitMqTopology
             $this->declareExchangeIfMissing($rabbitmq, $dlx, AMQPExchangeType::DIRECT);
             $dlxExchanges[] = $dlx;
 
+            $eventsExchange = null;
             if (! empty($domain['events_exchange'])) {
                 $eventsExchange = (string) $domain['events_exchange'];
                 $eventsType = $this->exchangeType((string) ($domain['events_exchange_type'] ?? 'topic'));
@@ -93,32 +96,42 @@ class RabbitMqTopology
             }
 
             foreach ($queues as $queue) {
-                $failedQueue = $this->failedQueueName($queue);
-                $failedRoutingKey = $this->failedRoutingKey($queue);
-                $workArguments = [
-                    'x-dead-letter-exchange' => $dlx,
-                    'x-dead-letter-routing-key' => $failedRoutingKey,
-                ];
+                $this->declareWorkQueue(
+                    $rabbitmq,
+                    $queue,
+                    $dlx,
+                    $jobsExchange,
+                    $fresh,
+                    $declaredFailedQueues,
+                    $declaredQueues,
+                    $refreshed,
+                );
+            }
 
-                if (! $rabbitmq->isQueueExists($failedQueue)) {
-                    $rabbitmq->declareQueue($failedQueue, durable: true, autoDelete: false);
+            /** @var list<array{name: string, binding_keys: list<string>}> $eventQueues */
+            $eventQueues = $domain['event_queues'] ?? [];
+
+            if ($eventsExchange !== null) {
+                foreach ($eventQueues as $eventQueue) {
+                    $name = (string) $eventQueue['name'];
+                    /** @var list<string> $bindingKeys */
+                    $bindingKeys = $eventQueue['binding_keys'];
+
+                    $this->declareWorkQueue(
+                        $rabbitmq,
+                        $name,
+                        $dlx,
+                        null,
+                        $fresh,
+                        $declaredFailedQueues,
+                        $declaredEventQueues,
+                        $refreshed,
+                    );
+
+                    foreach ($bindingKeys as $bindingKey) {
+                        $rabbitmq->bindQueue($name, $eventsExchange, $bindingKey);
+                    }
                 }
-
-                $rabbitmq->bindQueue($failedQueue, $dlx, $failedRoutingKey);
-                $declaredFailedQueues[] = $failedQueue;
-
-                if ($fresh && $rabbitmq->isQueueExists($queue)) {
-                    $rabbitmq->deleteQueue($queue);
-                    $refreshed[] = $queue;
-                }
-
-                if (! $rabbitmq->isQueueExists($queue)) {
-                    $rabbitmq->declareQueue($queue, durable: true, autoDelete: false, arguments: $workArguments);
-                }
-
-                // Jobs publish to the domain jobs exchange with routing key = queue name.
-                $rabbitmq->bindQueue($queue, $jobsExchange, $queue);
-                $declaredQueues[] = $queue;
             }
         }
 
@@ -127,9 +140,55 @@ class RabbitMqTopology
             'events_exchanges' => $eventsExchanges,
             'dlx_exchanges' => $dlxExchanges,
             'queues' => $declaredQueues,
+            'event_queues' => $declaredEventQueues,
             'failed_queues' => $declaredFailedQueues,
             'refreshed' => $refreshed,
         ];
+    }
+
+    /**
+     * @param  list<string>  $declaredFailedQueues
+     * @param  list<string>  $declaredQueues
+     * @param  list<string>  $refreshed
+     */
+    protected function declareWorkQueue(
+        RabbitMQQueue $rabbitmq,
+        string $queue,
+        string $dlx,
+        ?string $jobsExchange,
+        bool $fresh,
+        array &$declaredFailedQueues,
+        array &$declaredQueues,
+        array &$refreshed,
+    ): void {
+        $failedQueue = $this->failedQueueName($queue);
+        $failedRoutingKey = $this->failedRoutingKey($queue);
+        $workArguments = [
+            'x-dead-letter-exchange' => $dlx,
+            'x-dead-letter-routing-key' => $failedRoutingKey,
+        ];
+
+        if (! $rabbitmq->isQueueExists($failedQueue)) {
+            $rabbitmq->declareQueue($failedQueue, durable: true, autoDelete: false);
+        }
+
+        $rabbitmq->bindQueue($failedQueue, $dlx, $failedRoutingKey);
+        $declaredFailedQueues[] = $failedQueue;
+
+        if ($fresh && $rabbitmq->isQueueExists($queue)) {
+            $rabbitmq->deleteQueue($queue);
+            $refreshed[] = $queue;
+        }
+
+        if (! $rabbitmq->isQueueExists($queue)) {
+            $rabbitmq->declareQueue($queue, durable: true, autoDelete: false, arguments: $workArguments);
+        }
+
+        if ($jobsExchange !== null) {
+            $rabbitmq->bindQueue($queue, $jobsExchange, $queue);
+        }
+
+        $declaredQueues[] = $queue;
     }
 
     protected function declareExchangeIfMissing(RabbitMQQueue $rabbitmq, string $name, string $type): void

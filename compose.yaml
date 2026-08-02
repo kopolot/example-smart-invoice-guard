@@ -61,6 +61,24 @@ services:
         networks:
             - app
 
+    rabbitmq:
+        image: rabbitmq:4.1-management-alpine
+        hostname: rabbitmq
+        environment:
+            RABBITMQ_DEFAULT_USER: laravel
+            RABBITMQ_DEFAULT_PASS: laravel
+            RABBITMQ_DEFAULT_VHOST: /
+        volumes:
+            - rabbitmq_data:/var/lib/rabbitmq
+        healthcheck:
+            test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 12
+            start_period: 30s
+        networks:
+            - app
+
     memcached:
         image: memcached:1.6-alpine
         hostname: memcached
@@ -98,8 +116,8 @@ services:
     mailhog:
         image: mailhog/mailhog:latest
         hostname: mailhog
-        ports:
-            - 8025:8025
+        # ports:
+        #     - 8025:8025
         networks:
             - app
 
@@ -178,6 +196,7 @@ services:
 volumes:
     php_data:
     redis_data:
+    rabbitmq_data:
     elasticsearch_data:
     pxc_data_node1:
     pxc_data_node2:

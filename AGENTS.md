@@ -24,6 +24,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - laravel/sail (SAIL) - v1
 - phpunit/phpunit (PHPUNIT) - v12
 - predis/predis - v3
+- vladimir-yuldashev/laravel-queue-rabbitmq - v15
 - @inertiajs/vue3 (INERTIA_VUE) - v3
 - tailwindcss (TAILWINDCSS) - v4
 - vue (VUE) - v3
@@ -40,7 +41,8 @@ This application is a Laravel application and its main Laravel ecosystems packag
   - `nginx` - Nginx frontend with SSL termination
   - `pxc-node1` / `pxc-node2` / `pxc-node3` - Percona XtraDB Cluster 8.0 (persistent volumes on all three; `pxc-node1` force-bootstraps after unclean full-cluster stops via `docker/pxc-node1-entrypoint.sh`)
   - `proxysql` - SQL proxy in front of PXC (app hostname `mariadb`)
-  - `redis` - queues, sessions, and Invoice Pulse (engagement ranking)
+  - `redis` - sessions and Invoice Pulse (engagement ranking)
+  - `rabbitmq` - application queues (`QUEUE_CONNECTION=rabbitmq`; management UI on host port 15672)
   - `memcached` - application cache (`CACHE_STORE=memcached`)
   - `elasticsearch` - invoice full-text / prefix search (no host port published; Docker network only)
   - `mailhog` - local mail inbox UI
@@ -49,15 +51,18 @@ This application is a Laravel application and its main Laravel ecosystems packag
   - app HTTPS: `https://localhost:8443`
   - Vite dev server: `http://localhost:5173` (container also exposes HTTPS Vite on 5173 in local setup)
   - MailHog UI: `http://localhost:8025`
+  - RabbitMQ AMQP: `localhost:5672`
+  - RabbitMQ management UI: `http://localhost:15672` (user/pass `laravel` / `laravel`)
 - Internal container hostnames used by the app configuration:
   - database: `mariadb` (ProxySQL)
   - redis: `redis`
+  - rabbitmq: `rabbitmq` (`RABBITMQ_HOST=rabbitmq`)
   - memcached: `memcached`
   - elasticsearch: `elasticsearch` (`ELASTICSEARCH_HOST=http://elasticsearch:9200`)
   - mail: `mailhog`
   - PHP FPM hostname behind Nginx: `php-fpm`
   - Nginx hostname: `nginx`
-- The app's `.env` / `.env.example` is configured for container networking (`DB_HOST=mariadb`, `REDIS_HOST=redis`, `MEMCACHED_HOST=memcached`, `MAIL_HOST=mailhog`, `ELASTICSEARCH_HOST=http://elasticsearch:9200`), so preserve container-first assumptions when troubleshooting.
+- The app's `.env` / `.env.example` is configured for container networking (`DB_HOST=mariadb`, `REDIS_HOST=redis`, `RABBITMQ_HOST=rabbitmq`, `MEMCACHED_HOST=memcached`, `MAIL_HOST=mailhog`, `ELASTICSEARCH_HOST=http://elasticsearch:9200`), so preserve container-first assumptions when troubleshooting.
 - Queue workers and Reverb are not automatically managed by this compose file for local development; start them explicitly when needed.
 - After first boot (or mapping changes), rebuild the invoices search index with `php artisan invoices:reindex --fresh`.
 - Local Elasticsearch disables disk allocation watermarks in `compose.yaml` so a nearly-full host disk does not leave the cluster red / hang index operations.
@@ -72,6 +77,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - Use `docker compose logs <service>` when debugging container startup or runtime issues.
 - Prefer ProxySQL / app-level queries; for cluster SQL debugging use `docker compose exec proxysql` or a PXC node when needed.
 - Use `docker compose exec redis redis-cli` for Redis inspection when needed.
+- Use `docker compose exec rabbitmq rabbitmq-diagnostics -q ping` (or open `http://localhost:15672`) to inspect RabbitMQ when needed.
 - Use `docker compose exec php curl -sS http://elasticsearch:9200/_cluster/health?pretty` to inspect Elasticsearch when needed.
 - The repository includes a `sail` wrapper script, but this project is not using a stock Sail service layout. Treat direct `docker compose` commands as the safer default unless the wrapper is already known to be configured correctly for the current environment.
 
@@ -82,7 +88,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - Nginx terminates HTTPS on `8443`; WebSocket traffic for Reverb is proxied through Nginx to the PHP container. PHP-FPM pool settings live in `docker/php-fpm.conf` (mounted as `zz-app.conf`).
 - Mail delivery in local development should be verified through MailHog, not a real SMTP provider.
 - When sharing or testing URLs locally, prefer the exposed host ports above rather than internal container addresses unless a command runs entirely inside the Docker network.
-- Invoice search depends on Elasticsearch; Invoice Pulse and queue/session traffic depend on Redis; dashboard cache depends on Memcached.
+- Invoice search depends on Elasticsearch; Invoice Pulse and sessions depend on Redis; queues depend on RabbitMQ; dashboard cache depends on Memcached.
 
 ## Skills Activation
 
@@ -287,7 +293,7 @@ This environment runs the app via the repo's Docker Compose stack (see the "Loca
 
 ### Dev servers (start manually inside the `php` container)
 - Frontend assets: `npm run dev` (Vite HMR on port 5173). Without it you must have a `npm run build` output or you'll hit a Vite manifest error. `npm run dev` creates `public/hot`; delete it to fall back to built assets.
-- Jobs: `php artisan queue:work` is required for PDF generation, email sending, and paid-invoice notifications (queue is Redis-backed and not started by compose).
+- Jobs: `php artisan queue:work` (or `php artisan rabbitmq:consume`) is required for PDF generation, email sending, and paid-invoice notifications (queue is RabbitMQ-backed and not started by compose).
 - Reverb (`php artisan reverb:start`) is optional; without it the browser console/network will show harmless 503s from Echo trying to reach the WebSocket endpoint.
 
 ### HTTPS / browser access

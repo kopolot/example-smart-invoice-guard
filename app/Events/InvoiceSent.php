@@ -2,16 +2,15 @@
 
 namespace App\Events;
 
+use App\Models\Invoice;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Invoice;
 
-class InvoiceSent implements ShouldBroadcast
+class InvoiceSent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -32,6 +31,16 @@ class InvoiceSent implements ShouldBroadcast
     {
         return [
             new PrivateChannel('App.Models.User.' . $this->invoice->user_id),
+        ];
+    }
+
+    /**
+     * @return array{sent_at: string|null}
+     */
+    public function broadcastWith(): array
+    {
+        return [
+            'sent_at' => $this->invoice->sent_at?->toIso8601String(),
         ];
     }
 }

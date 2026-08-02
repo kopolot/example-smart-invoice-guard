@@ -293,7 +293,7 @@ This environment runs the app via the repo's Docker Compose stack (see the "Loca
 
 ### Dev servers (start manually inside the `php` container)
 - Frontend assets: `npm run dev` (Vite HMR on port 5173). Without it you must have a `npm run build` output or you'll hit a Vite manifest error. `npm run dev` creates `public/hot`; delete it to fall back to built assets.
-- Jobs: `php artisan queue:work` (or `php artisan rabbitmq:consume`) is required for PDF generation, email sending, and paid-invoice notifications (queue is RabbitMQ-backed and not started by compose).
+- Jobs: run `php artisan rabbitmq:setup-topology` once (use `--fresh` after changing DLX args), then `php artisan queue:work --queue=pdf,email,default` (or `php artisan rabbitmq:consume`) for PDF/email jobs. Queue is RabbitMQ-backed and not started by compose.
 - Reverb (`php artisan reverb:start`) is optional; without it the browser console/network will show harmless 503s from Echo trying to reach the WebSocket endpoint.
 
 ### HTTPS / browser access

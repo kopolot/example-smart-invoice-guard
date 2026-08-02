@@ -116,9 +116,10 @@ php artisan invoices:reindex --fresh   # indeks Elasticsearch
 npm install
 npm run build
 
-# 4. Worker kolejki (osobny terminal w kontenerze)
-php artisan queue:work & php artisan reverb:start &
-# alternatywnie (basic_consume, zwykle szybsze): php artisan rabbitmq:consume
+# 4. Topologia RabbitMQ (DLX + kolejki pdf/email) i worker
+php artisan rabbitmq:setup-topology --fresh
+php artisan queue:work --queue=pdf,email,default & php artisan reverb:start &
+# alternatywnie (basic_consume, zwykle szybsze): php artisan rabbitmq:consume pdf
 ```
 
 Po starcie:

@@ -14,12 +14,18 @@ class GenerateInvoicePdfJob implements ShouldQueue
 {
     use Queueable;
 
+    public int $tries = 3;
+
+    /**
+     * @var list<int>
+     */
+    public array $backoff = [1, 5, 10];
+
     /**
      * Create a new job instance.
      */
     public function __construct(private Invoice $invoice)
     {
-        //
         $this->onQueue('pdf');
     }
 

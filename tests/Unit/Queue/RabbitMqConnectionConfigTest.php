@@ -22,5 +22,7 @@ class RabbitMqConnectionConfigTest extends TestCase
         $this->assertArrayHasKey('user', $connection['hosts'][0]);
         $this->assertArrayHasKey('password', $connection['hosts'][0]);
         $this->assertArrayHasKey('vhost', $connection['hosts'][0]);
+        $this->assertTrue((bool) $connection['options']['queue']['reroute_failed']);
+        $this->assertSame('invoices.dlx', $connection['options']['queue']['failed_exchange']);
     }
 }

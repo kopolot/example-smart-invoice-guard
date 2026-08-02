@@ -28,6 +28,7 @@ class SendInvoiceEmail implements ShouldBeUnique, ShouldQueue
      */
     public function __construct(private Invoice $invoice, private string $email)
     {
+        $this->onConnection('rabbitmq-email');
         $this->onQueue('email');
     }
 

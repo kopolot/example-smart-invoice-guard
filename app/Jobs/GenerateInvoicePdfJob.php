@@ -26,6 +26,7 @@ class GenerateInvoicePdfJob implements ShouldQueue
      */
     public function __construct(private Invoice $invoice)
     {
+        $this->onConnection('rabbitmq-invoices');
         $this->onQueue('pdf');
     }
 

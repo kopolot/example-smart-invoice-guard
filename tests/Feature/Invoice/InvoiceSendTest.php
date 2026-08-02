@@ -23,8 +23,8 @@ class InvoiceSendTest extends TestCase
         Mail::fake();
         User::factory()->create();
         $invoice = Invoice::factory()->create();
-        GenerateInvoicePdfJob::dispatch($invoice);
-        SendInvoiceEmail::dispatch($invoice->refresh(), 'test@example.com');
+        GenerateInvoicePdfJob::dispatchSync($invoice);
+        SendInvoiceEmail::dispatchSync($invoice->refresh(), 'test@example.com');
         $invoice->refresh();
         $this->assertNotNull($invoice->pdf_path);
         $this->assertNotNull($invoice->sent_at);

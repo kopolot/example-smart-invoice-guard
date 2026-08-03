@@ -1,17 +1,25 @@
 <script setup lang="ts">
-import { Badge } from '@/components/ui/badge';
-import { create as createInvoice, index as invoiceIndex } from '@/routes/invoices';
 import { Link } from '@inertiajs/vue3';
+import { Badge } from '@/components/ui/badge';
+import {
+    create as createInvoice,
+    index as invoiceIndex,
+} from '@/routes/invoices';
 </script>
 
 <template>
-    <section class="flex flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+    <section
+        class="flex flex-col gap-4 rounded-xl border bg-card p-6 shadow-sm lg:flex-row lg:items-end lg:justify-between"
+    >
         <div class="space-y-2">
             <Badge variant="outline">Business overview</Badge>
             <div class="space-y-1">
-                <h1 class="text-2xl font-semibold tracking-tight">Invoice performance at a glance</h1>
+                <h1 class="text-2xl font-semibold tracking-tight">
+                    Invoice performance at a glance
+                </h1>
                 <p class="max-w-2xl text-sm text-muted-foreground">
-                    Track collection, open balance, monthly trend, and the latest invoice state changes without leaving the dashboard.
+                    Track collection, open balance, monthly trend, and the
+                    latest invoice state changes without leaving the dashboard.
                 </p>
             </div>
         </div>

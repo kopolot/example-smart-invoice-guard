@@ -20,7 +20,7 @@ class InvoicePulseTest extends TestCase
     {
         parent::setUp();
 
-        if (!extension_loaded('redis')) {
+        if (! extension_loaded('redis')) {
             $this->markTestSkipped('The redis extension is required for Invoice Pulse tests.');
         }
 
@@ -30,20 +30,27 @@ class InvoicePulseTest extends TestCase
             $this->markTestSkipped('Redis is not available for Invoice Pulse tests.');
         }
 
+        // Other Feature tests may record pulse against reused SQLite IDs (e.g. 1).
+        // Clear before each method so assertions start from a known empty DB 15.
+        $this->flushPulseRedis();
+
         $this->pulse = app(InvoicePulseService::class);
     }
 
     protected function tearDown(): void
     {
-        if (isset($this->pulse)) {
-            try {
-                Redis::flushdb();
-            } catch (\Throwable) {
-                // Ignore cleanup failures when Redis is unavailable.
-            }
-        }
+        $this->flushPulseRedis();
 
         parent::tearDown();
+    }
+
+    private function flushPulseRedis(): void
+    {
+        try {
+            Redis::flushdb();
+        } catch (\Throwable) {
+            // Ignore cleanup failures when Redis is unavailable.
+        }
     }
 
     public function test_recording_a_visit_updates_set_hash_and_zset_atomically(): void
@@ -120,7 +127,7 @@ class InvoicePulseTest extends TestCase
             ->get(route('invoices.show', $invoice))
             ->assertOk()
             ->assertInertia(
-                fn(Assert $page) => $page
+                fn (Assert $page) => $page
                     ->component('invoices/Show')
                     ->where('pulse.views', 1)
                     ->where('pulse.uniqueVisitors', 1)
@@ -131,7 +138,7 @@ class InvoicePulseTest extends TestCase
             ->get(route('invoices.show', $invoice))
             ->assertOk()
             ->assertInertia(
-                fn(Assert $page) => $page
+                fn (Assert $page) => $page
                     ->where('pulse.views', 2)
                     ->where('pulse.uniqueVisitors', 1),
             );
@@ -148,7 +155,7 @@ class InvoicePulseTest extends TestCase
             ->get(route('invoices.show-pay', $invoice))
             ->assertOk()
             ->assertInertia(
-                fn(Assert $page) => $page
+                fn (Assert $page) => $page
                     ->component('invoices/PayForm')
                     ->where('pulse.views', 1)
                     ->where('pulse.uniqueVisitors', 1),
@@ -175,7 +182,7 @@ class InvoicePulseTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertInertia(
-                fn(Assert $page) => $page
+                fn (Assert $page) => $page
                     ->component('Dashboard')
                     ->has('hotInvoices', 1)
                     ->where('hotInvoices.0.number', 'INV-DASH-HOT')

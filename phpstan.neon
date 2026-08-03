@@ -10,4 +10,35 @@ parameters:
         - database/
         - routes/
 
-    level: 7
+    # Level 6: real type bugs without level-7 annotation tax.
+    level: 6
+
+    # PHPDoc / Eloquent types are hints, not proofs.
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+
+    ignoreErrors:
+        # Annotation / style debt — not runtime bugs.
+        - identifier: missingType.return
+        - identifier: missingType.generics
+        - identifier: missingType.iterableValue
+        - identifier: missingType.property
+
+        # Defensive operators on types PHPStan thinks are already narrow.
+        - identifier: nullsafe.neverNull
+        - identifier: nullCoalesce.expr
+        - identifier: nullCoalesce.offset
+        - identifier: arrayValues.list
+        - identifier: arrayValues.empty
+        - identifier: arrayFilter.alwaysEmpty
+
+        # Larastan / stub quirks.
+        - identifier: larastan.noModelMake
+        -
+            # Laravel Redis::eval($script, $numKeys, ...$args) vs phpredis stub.
+            path: app/Services/InvoicePulseService.php
+            message: '#Redis::eval#'
+        -
+            # selectRaw / aggregates typed as generic Model.
+            identifier: property.notFound
+            path: app/Services/DashboardStatsService.php

@@ -5,13 +5,12 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Fortify\Features;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 
 class SecurityController extends Controller
 {
@@ -23,7 +22,6 @@ class SecurityController extends Controller
         $props = [
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
         ];
-
 
         return Inertia::render('settings/Security', $props);
     }

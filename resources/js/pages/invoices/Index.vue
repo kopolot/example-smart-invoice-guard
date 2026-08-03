@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import InvoiceListItem from '@/components/invoices/ListItem.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { index } from '@/routes/invoices';
-import { create as createInvoice } from '@/routes/invoices';
 import { Head, router } from '@inertiajs/vue3';
 import axios from 'axios';
 import { TailwindPagination } from 'laravel-vue-pagination';
 import { ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
+import InvoiceListItem from '@/components/invoices/ListItem.vue';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { index } from '@/routes/invoices';
+import { create as createInvoice } from '@/routes/invoices';
 
 const props = defineProps<{
     invoicesPagination: any;
@@ -77,7 +77,9 @@ const getPaginationData = async (page = 1) => {
 
 <template>
     <Head title="Invoices" />
-    <div class="flex w-full flex-col items-start justify-start gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div
+        class="flex w-full flex-col items-start justify-start gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
+    >
         <Button>
             <a :href="createInvoice().url">Create Invoice</a>
         </Button>
@@ -109,10 +111,18 @@ const getPaginationData = async (page = 1) => {
         v-if="!invoices.data?.length"
         class="px-4 pb-6 text-center text-sm text-muted-foreground"
     >
-        {{ searchQuery ? 'No invoices matched your search.' : 'No invoices yet.' }}
+        {{
+            searchQuery
+                ? 'No invoices matched your search.'
+                : 'No invoices yet.'
+        }}
     </div>
 
     <div class="flex items-center justify-center">
-        <TailwindPagination :limit="3" :data="invoices" @pagination-change-page="getPaginationData" />
+        <TailwindPagination
+            :limit="3"
+            :data="invoices"
+            @pagination-change-page="getPaginationData"
+        />
     </div>
 </template>

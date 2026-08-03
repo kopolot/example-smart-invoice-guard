@@ -1,14 +1,22 @@
 <script setup lang="ts">
+import { Form, Head } from '@inertiajs/vue3';
+import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { edit, update, index, show } from '@/routes/invoices';
 import type { Invoice } from '@/types/invoice';
-import { assignableStatusesLabels, availableStatusesLabels } from '@/types/invoice';
-import { Form, Head } from '@inertiajs/vue3';
-import { ref } from 'vue';
-
+import {
+    assignableStatusesLabels,
+    availableStatusesLabels,
+} from '@/types/invoice';
 
 const props = defineProps<{
     invoice: Invoice;
@@ -40,39 +48,70 @@ const invoiceRef = ref<Invoice>({
     date: formatDateInputValue(props.invoice.date),
     due_date: formatDateInputValue(props.invoice.due_date),
 });
-
 </script>
 
 <template>
     <Head :title="`Edit Invoice ${invoice.number}`" />
     <div class="flex flex-col space-y-6 p-4">
         <h1>Edit Invoice {{ invoice.number }}</h1>
-        <Form class="grid grid-cols-2 gap-2" v-bind="update.form(invoice.id)" v-slot="{ errors, processing }">
+        <Form
+            class="grid grid-cols-2 gap-2"
+            v-bind="update.form(invoice.id)"
+            v-slot="{ errors, processing }"
+        >
             <div class="row grid grid-cols-3">
                 <Label class="col" for="number">Number</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="text" name="number" placeholder="Number" v-model="invoiceRef.number" />
+                    <Input
+                        required
+                        type="text"
+                        name="number"
+                        placeholder="Number"
+                        v-model="invoiceRef.number"
+                    />
                     <InputError :message="errors.number" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="amount">Amount</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="number" step="0.01" min="0" name="amount" placeholder="Amount" v-model="invoiceRef.amount" />
+                    <Input
+                        required
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        name="amount"
+                        placeholder="Amount"
+                        v-model="invoiceRef.amount"
+                    />
                     <InputError :message="errors.amount" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="tax_rate">Tax Rate</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="number" step="0.01" min="0" name="tax_rate" placeholder="Tax Rate" v-model="invoiceRef.tax_rate" />
+                    <Input
+                        required
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        name="tax_rate"
+                        placeholder="Tax Rate"
+                        v-model="invoiceRef.tax_rate"
+                    />
                     <InputError :message="errors.tax_rate" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="tax_number">Tax Number</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="text" name="tax_number" placeholder="Tax Number" v-model="invoiceRef.tax_number" />
+                    <Input
+                        required
+                        type="text"
+                        name="tax_number"
+                        placeholder="Tax Number"
+                        v-model="invoiceRef.tax_number"
+                    />
                     <InputError :message="errors.tax_number" />
                 </div>
             </div>
@@ -82,11 +121,18 @@ const invoiceRef = ref<Invoice>({
                     <Select required name="status" v-model="invoiceRef.status">
                         <SelectTrigger class="w-100">
                             <SelectValue placeholder="Select a status">
-                                {{ availableStatusesLabels[invoiceRef.status]}}
+                                {{ availableStatusesLabels[invoiceRef.status] }}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem v-for="label,status of assignableStatusesLabels" :value="status" :key="status">{{ label }}</SelectItem>
+                            <SelectItem
+                                v-for="(
+                                    label, status
+                                ) of assignableStatusesLabels"
+                                :value="status"
+                                :key="status"
+                                >{{ label }}</SelectItem
+                            >
                         </SelectContent>
                     </Select>
                     <InputError :message="errors.status" />
@@ -95,28 +141,37 @@ const invoiceRef = ref<Invoice>({
             <div class="row grid grid-cols-3">
                 <Label class="col" for="date">Date</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="date" name="date" placeholder="Date" v-model="invoiceRef.date" />
+                    <Input
+                        required
+                        type="date"
+                        name="date"
+                        placeholder="Date"
+                        v-model="invoiceRef.date"
+                    />
                     <InputError :message="errors.date" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="due_date">Due date</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="date" name="due_date" placeholder="Due date" v-model="invoiceRef.due_date" />
+                    <Input
+                        required
+                        type="date"
+                        name="due_date"
+                        placeholder="Due date"
+                        v-model="invoiceRef.due_date"
+                    />
                     <InputError :message="errors.due_date" />
                 </div>
             </div>
-            <Button class="col-1 col-end-2" type="submit" :disabled="processing">Update Invoice</Button>
+            <Button class="col-1 col-end-2" type="submit" :disabled="processing"
+                >Update Invoice</Button
+            >
             <Button class="col-2 col-end-3">
-                <a :href="show(invoice.id).url">
-                    Back to Invoice
-                </a>
+                <a :href="show(invoice.id).url"> Back to Invoice </a>
             </Button>
         </Form>
     </div>
 </template>
 
-<style scoped>
-
-</style>
-
+<style scoped></style>

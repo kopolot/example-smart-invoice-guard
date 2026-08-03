@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { StatusBreakdownItem } from '@/types';
 
@@ -25,7 +31,9 @@ const statusTone = (status: StatusBreakdownItem['status']) => {
     <Card>
         <CardHeader>
             <CardTitle>Status breakdown</CardTitle>
-            <CardDescription>Current invoice distribution by payment state.</CardDescription>
+            <CardDescription
+                >Current invoice distribution by payment state.</CardDescription
+            >
         </CardHeader>
         <CardContent class="space-y-3">
             <div
@@ -34,7 +42,10 @@ const statusTone = (status: StatusBreakdownItem['status']) => {
                 class="flex items-center justify-between rounded-lg border px-4 py-3"
             >
                 <div class="flex items-center gap-3">
-                    <span class="h-2.5 w-2.5 rounded-full" :class="cn(statusTone(item.status))" />
+                    <span
+                        class="h-2.5 w-2.5 rounded-full"
+                        :class="cn(statusTone(item.status))"
+                    />
                     <div>
                         <p class="font-medium">{{ item.label }}</p>
                         <p class="text-sm text-muted-foreground">

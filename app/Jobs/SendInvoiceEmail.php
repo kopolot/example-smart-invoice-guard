@@ -65,6 +65,6 @@ class SendInvoiceEmail implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return $this->invoice->id;
+        return (string) $this->invoice->id;
     }
 }

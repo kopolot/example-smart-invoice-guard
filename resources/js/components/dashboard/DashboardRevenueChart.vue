@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { MonthlyRevenueItem } from '@/types';
 import { computed } from 'vue';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import type { MonthlyRevenueItem } from '@/types';
 
 const props = defineProps<{
     monthlyRevenue: MonthlyRevenueItem[];
@@ -13,7 +19,9 @@ const currencyFormatter = new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 2,
 });
 
-const maxMonthlyRevenue = computed(() => Math.max(...props.monthlyRevenue.map((item) => item.revenue), 1));
+const maxMonthlyRevenue = computed(() =>
+    Math.max(...props.monthlyRevenue.map((item) => item.revenue), 1),
+);
 
 const chartItems = computed(() =>
     props.monthlyRevenue.map((item) => ({
@@ -28,12 +36,23 @@ const chartItems = computed(() =>
     <Card>
         <CardHeader>
             <CardTitle>Revenue trend</CardTitle>
-            <CardDescription>Last 6 full months plus current month based on invoice dates.</CardDescription>
+            <CardDescription
+                >Last 6 full months plus current month based on invoice
+                dates.</CardDescription
+            >
         </CardHeader>
         <CardContent>
-            <div class="grid min-h-72 grid-cols-6 items-end gap-3 sm:grid-cols-7">
-                <div v-for="item in chartItems" :key="item.month" class="flex h-full flex-col justify-end gap-3">
-                    <div class="text-center text-xs font-medium text-muted-foreground">
+            <div
+                class="grid min-h-72 grid-cols-6 items-end gap-3 sm:grid-cols-7"
+            >
+                <div
+                    v-for="item in chartItems"
+                    :key="item.month"
+                    class="flex h-full flex-col justify-end gap-3"
+                >
+                    <div
+                        class="text-center text-xs font-medium text-muted-foreground"
+                    >
                         {{ item.revenueLabel }}
                     </div>
                     <div class="flex h-56 items-end">

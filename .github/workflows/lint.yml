@@ -1,51 +1,66 @@
 name: linter
 
 on:
-  push:
-    branches:
-      - develop
-      - main
-      - master
-      - workos
-  pull_request:
-    branches:
-      - develop
-      - main
-      - master
-      - workos
+    push:
+        branches:
+            - develop
+            - main
+            - master
+    pull_request:
+        branches:
+            - develop
+            - main
+            - master
 
 permissions:
-  contents: write
+    contents: read
+
+env:
+    XDEBUG_MODE: off
+    COMPOSE_FILE: compose.yaml:compose.ci.yaml
+    # Isolate from a developer's local compose project name (directory-based).
+    COMPOSE_PROJECT_NAME: sig-ci
 
 jobs:
-  quality:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
+    quality:
+        runs-on: ubuntu-latest
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
-        with:
-          php-version: '8.4'
+        steps:
+            - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  persist-credentials: false
 
-      - name: Install Dependencies
-        run: |
-          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-          npm install
+            # Same PHP 8.5 image as local/dev — no separate setup-php matrix.
+            - name: Start PHP service
+              run: docker compose up -d --build --no-deps php
 
-      - name: Run Pint
-        run: composer lint
+            - name: Install Dependencies
+              run: |
+                  # apk's /usr/bin/composer wraps php85 (missing extensions) — use image PHP + phar.
+                  docker compose exec -T -e XDEBUG_MODE=off php /usr/local/bin/php /usr/bin/composer.phar install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+                  # package-lock.json is gitignored in this repo — cannot use npm ci on a fresh checkout.
+                  docker compose exec -T php npm install
 
-      - name: Format Frontend
-        run: npm run format
+            # routes/actions/wayfinder are gitignored — without them eslint import/order & vue-tsc diverge from local.
+            - name: Generate Wayfinder
+              run: |
+                  docker compose exec -T php sh -lc 'test -f .env || cp .env.example .env'
+                  docker compose exec -T -e XDEBUG_MODE=off php php artisan key:generate --no-interaction
+                  docker compose exec -T -e XDEBUG_MODE=off php php artisan wayfinder:generate --with-form --no-interaction
 
-      - name: Lint Frontend
-        run: npm run lint
+            - name: Run Pint
+              run: docker compose exec -T -e XDEBUG_MODE=off php /usr/local/bin/php /usr/bin/composer.phar lint:check
 
-      # - name: Commit Changes
-      #   uses: stefanzweifel/git-auto-commit-action@v7
-      #   with:
-      #     commit_message: fix code style
-      #     commit_options: '--no-verify'
+            - name: Check Frontend Format
+              run: docker compose exec -T php npm run format:check
+
+            - name: Lint Frontend
+              run: docker compose exec -T php npm run lint:check
+
+            - name: Check Frontend Types
+              run: docker compose exec -T php npm run types:check
+
+            # Skip under nektos/act (ACT=true) so a local stack is not torn down.
+            - name: Stop PHP service
+              if: ${{ always() && env.ACT == '' }}
+              run: docker compose down --remove-orphans

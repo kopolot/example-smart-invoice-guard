@@ -1,11 +1,17 @@
 <script setup lang="ts">
+import { Form, Head } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { store, create, index } from '@/routes/invoices';
 import { assignableStatusesLabels } from '@/types/invoice';
-import { Form, Head } from '@inertiajs/vue3';
 
 const props = defineProps<{
     idempotencyKey: string;
@@ -40,28 +46,52 @@ defineOptions({
             <div class="row grid grid-cols-3">
                 <Label class="col" for="number">Number</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="text" name="number" placeholder="Number" />
+                    <Input
+                        required
+                        type="text"
+                        name="number"
+                        placeholder="Number"
+                    />
                     <InputError :message="errors.number" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="amount">Amount</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="number" step="0.01" min="0" name="amount" placeholder="Amount" />
+                    <Input
+                        required
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        name="amount"
+                        placeholder="Amount"
+                    />
                     <InputError :message="errors.amount" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="tax_rate">Tax Rate</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="number" step="0.01" min="0" name="tax_rate" placeholder="Tax Rate" />
+                    <Input
+                        required
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        name="tax_rate"
+                        placeholder="Tax Rate"
+                    />
                     <InputError :message="errors.tax_rate" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="tax_number">Tax Number</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="text" name="tax_number" placeholder="Tax Number" />
+                    <Input
+                        required
+                        type="text"
+                        name="tax_number"
+                        placeholder="Tax Number"
+                    />
                     <InputError :message="errors.tax_number" />
                 </div>
             </div>
@@ -72,8 +102,15 @@ defineOptions({
                         <SelectTrigger class="w-100">
                             <SelectValue placeholder="Select a status" />
                         </SelectTrigger>
-                        <SelectContent >
-                            <SelectItem v-for="label,status of assignableStatusesLabels" :value="status" :key="status">{{ label }}</SelectItem>
+                        <SelectContent>
+                            <SelectItem
+                                v-for="(
+                                    label, status
+                                ) of assignableStatusesLabels"
+                                :value="status"
+                                :key="status"
+                                >{{ label }}</SelectItem
+                            >
                         </SelectContent>
                     </Select>
                     <InputError :message="errors.status" />
@@ -82,23 +119,32 @@ defineOptions({
             <div class="row grid grid-cols-3">
                 <Label class="col" for="date">Date</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="date" name="date" placeholder="Date" />
+                    <Input
+                        required
+                        type="date"
+                        name="date"
+                        placeholder="Date"
+                    />
                     <InputError :message="errors.date" />
                 </div>
             </div>
             <div class="row grid grid-cols-3">
                 <Label class="col" for="due_date">Due date</Label>
                 <div class="col-2 col-end-4">
-                    <Input required type="date" name="due_date" placeholder="Due date" />
+                    <Input
+                        required
+                        type="date"
+                        name="due_date"
+                        placeholder="Due date"
+                    />
                     <InputError :message="errors.due_date" />
                 </div>
             </div>
-            <Button class="col-1 col-end-2" type="submit" :disabled="processing">Create Invoice</Button>
+            <Button class="col-1 col-end-2" type="submit" :disabled="processing"
+                >Create Invoice</Button
+            >
         </Form>
     </div>
 </template>
 
-<style scoped>
-
-</style>
-
+<style scoped></style>

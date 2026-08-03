@@ -22,7 +22,7 @@ class InvoiceSearchService
 
     public function ping(): bool
     {
-        if (!$this->enabled()) {
+        if (! $this->enabled()) {
             return false;
         }
 
@@ -40,14 +40,14 @@ class InvoiceSearchService
 
     public function ensureIndex(): void
     {
-        if ($this->indexReady || !$this->enabled()) {
+        if ($this->indexReady || ! $this->enabled()) {
             return;
         }
 
         $client = $this->client();
         $index = $this->indexName();
 
-        if (!$client->indices()->exists(['index' => $index])->asBool()) {
+        if (! $client->indices()->exists(['index' => $index])->asBool()) {
             $client->indices()->create([
                 'index' => $index,
                 'body' => [
@@ -121,7 +121,7 @@ class InvoiceSearchService
 
     public function index(Invoice $invoice): void
     {
-        if (!$this->enabled()) {
+        if (! $this->enabled()) {
             return;
         }
 
@@ -130,14 +130,14 @@ class InvoiceSearchService
         $this->client()->index([
             'index' => $this->indexName(),
             'id' => (string) $invoice->id,
-            'refresh' => true,
+            'refresh' => 'true',
             'body' => $this->document($invoice),
         ]);
     }
 
     public function forget(Invoice $invoice): void
     {
-        if (!$this->enabled()) {
+        if (! $this->enabled()) {
             return;
         }
 
@@ -145,7 +145,7 @@ class InvoiceSearchService
             $this->client()->delete([
                 'index' => $this->indexName(),
                 'id' => (string) $invoice->id,
-                'refresh' => true,
+                'refresh' => 'true',
             ]);
         } catch (ClientResponseException $exception) {
             if ($exception->getCode() !== 404) {
@@ -213,7 +213,7 @@ class InvoiceSearchService
         $total = (int) ($response['hits']['total']['value'] ?? 0);
 
         $ids = array_values(array_filter(array_map(
-            static fn(array $hit): int => (int) ($hit['_id'] ?? $hit['_source']['id'] ?? 0),
+            static fn (array $hit): int => (int) ($hit['_id'] ?? $hit['_source']['id'] ?? 0),
             $hits,
         )));
 
@@ -241,7 +241,7 @@ class InvoiceSearchService
         $count = 0;
 
         Invoice::query()
-            ->when($userId !== null, fn($query) => $query->where('user_id', $userId))
+            ->when($userId !== null, fn ($query) => $query->where('user_id', $userId))
             ->orderBy('id')
             ->chunkById(100, function (Collection $invoices) use (&$count): void {
                 foreach ($invoices as $invoice) {
@@ -255,7 +255,7 @@ class InvoiceSearchService
 
     public function flushIndex(): void
     {
-        if (!$this->enabled()) {
+        if (! $this->enabled()) {
             return;
         }
 
@@ -294,7 +294,7 @@ class InvoiceSearchService
             'id' => $invoice->id,
             'user_id' => (int) $invoice->user_id,
             'number' => (string) $invoice->number,
-            'status' => $invoice->status?->value ?? (string) $invoice->status,
+            'status' => $invoice->status->value,
             'amount' => (float) $invoice->amount,
             'total_amount' => (float) $invoice->total_amount,
             'date' => $invoice->date?->toDateString(),
@@ -321,7 +321,7 @@ class InvoiceSearchService
             ->keyBy('id');
 
         return collect($ids)
-            ->map(fn(int $id) => $invoices->get($id))
+            ->map(fn (int $id) => $invoices->get($id))
             ->filter()
             ->values();
     }

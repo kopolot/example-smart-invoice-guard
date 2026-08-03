@@ -8,7 +8,9 @@
  *   K6_API_TOKEN        Sanctum bearer token (from K6Seeder)
  *   K6_SMOKE_VUS        smoke VUs (do NOT use K6_VUS — k6 builtin override)
  *   K6_SMOKE_ITERS      smoke iterations (do NOT use K6_ITERATIONS)
- *   K6_LOAD_DURATION    load/api duration (do NOT use K6_DURATION)
+ *   K6_REGRESSION_VUS   regression VUs
+ *   K6_REGRESSION_ITERS regression iterations
+ *   K6_LOAD_DURATION    load/api/regression max duration (do NOT use K6_DURATION)
  *   K6_API_RATE         API arrivals per minute in load.js
  */
 export const BASE_URL = (__ENV.K6_BASE_URL || 'https://localhost:8443').replace(/\/$/, '');
@@ -25,6 +27,20 @@ export const thresholds = {
         http_req_failed: ['rate<0.05'],
         http_req_duration: ['p(95)<2000'],
         checks: ['rate>0.95'],
+    },
+    /**
+     * CI gate — short run, stricter checks, per-endpoint latency budgets.
+     * Budgets are slightly looser than load.js to absorb cold-start on GHA runners.
+     */
+    regression: {
+        http_req_failed: ['rate<0.01'],
+        http_req_duration: ['p(95)<3000'],
+        checks: ['rate>0.99'],
+        'http_req_duration{endpoint:home}': ['p(95)<1500'],
+        'http_req_duration{endpoint:dashboard}': ['p(95)<2000'],
+        'http_req_duration{endpoint:invoices}': ['p(95)<2000'],
+        'http_req_duration{endpoint:invoice_search}': ['p(95)<2500'],
+        'http_req_duration{endpoint:api_pdf}': ['p(95)<6000'],
     },
     load: {
         http_req_failed: ['rate<0.05'],

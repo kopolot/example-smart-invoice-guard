@@ -1,0 +1,6 @@
+# Prefer nektos/act over Fedora's unrelated /usr/bin/act package.
+# Self-hosted: workflow shells out to docker compose (DinD is unreliable).
+-P ubuntu-latest=-self-hosted
+--container-daemon-socket -
+# Don't leak local .env into the simulated Actions environment.
+--env-file /dev/null

@@ -1,0 +1,6 @@
+# CI / nektos-act overrides: no host port binds (avoids clashes with a local stack).
+services:
+  php:
+    ports: !override []
+  nginx:
+    ports: !override []

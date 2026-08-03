@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import DashboardOverdueAlert from '@/components/dashboard/DashboardOverdueAlert.vue';
+import { Head } from '@inertiajs/vue3';
 import DashboardHero from '@/components/dashboard/DashboardHero.vue';
 import DashboardHotInvoices from '@/components/dashboard/DashboardHotInvoices.vue';
 import DashboardMetricCards from '@/components/dashboard/DashboardMetricCards.vue';
+import DashboardOverdueAlert from '@/components/dashboard/DashboardOverdueAlert.vue';
 import DashboardQuickSummary from '@/components/dashboard/DashboardQuickSummary.vue';
 import DashboardRecentActivity from '@/components/dashboard/DashboardRecentActivity.vue';
 import DashboardRevenueChart from '@/components/dashboard/DashboardRevenueChart.vue';
@@ -16,9 +17,8 @@ import type {
     RecentActivityItem,
     StatusBreakdownItem,
 } from '@/types';
-import { Head } from '@inertiajs/vue3';
 
-const props = defineProps<{
+defineProps<{
     summary: DashboardSummary;
     overdue: DashboardOverdue;
     statusBreakdown: StatusBreakdownItem[];
@@ -49,12 +49,16 @@ defineOptions({
 
         <DashboardMetricCards :summary="summary" />
 
-        <section class="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+        <section
+            class="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]"
+        >
             <DashboardRevenueChart :monthly-revenue="monthlyRevenue" />
             <DashboardStatusBreakdown :status-breakdown="statusBreakdown" />
         </section>
 
-        <section class="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+        <section
+            class="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]"
+        >
             <DashboardRecentActivity :recent-activity="recentActivity" />
             <DashboardQuickSummary :summary="summary" :overdue="overdue" />
         </section>

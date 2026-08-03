@@ -19,18 +19,18 @@ class EnsureRequestIsIdempotent
     {
         $key = $request->header('X-Idempotency-Key');
 
-        if (!$key) {
+        if (! $key) {
             return $this->reject($request, __('Idempotency key is required.'));
         }
 
         //  key validation is uuidv4
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $key)) {
+        if (! preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $key)) {
             return $this->reject($request, __('Invalid idempotency key.'));
         }
 
         $cacheKey = "idempotency_key:{$key}";
 
-        if (!Cache::add($cacheKey, 'processing', now()->addMinutes(5))) {
+        if (! Cache::add($cacheKey, 'processing', now()->addMinutes(5))) {
             $cached = Cache::get($cacheKey);
 
             if ($cached === 'processing') {

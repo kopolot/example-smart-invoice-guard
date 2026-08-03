@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { DashboardSummary } from '@/types';
 import { computed } from 'vue';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import type { DashboardSummary } from '@/types';
 
 const props = defineProps<{
     summary: DashboardSummary;

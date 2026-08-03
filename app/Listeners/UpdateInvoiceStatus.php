@@ -4,8 +4,8 @@ namespace App\Listeners;
 
 use App\Enums\InvoiceStatus;
 use App\Events\InvoicePaid;
-use Illuminate\Support\Facades\DB;
 use App\Models\Invoice;
+use Illuminate\Support\Facades\DB;
 
 class UpdateInvoiceStatus
 {

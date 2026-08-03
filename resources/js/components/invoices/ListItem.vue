@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import type { Invoice } from '@/types/invoice';
-import { show as showInvoice } from '@/routes/invoices';
 import { computed } from 'vue';
-
+import { show as showInvoice } from '@/routes/invoices';
+import type { Invoice } from '@/types/invoice';
 
 type Props = {
     invoice: Invoice;
@@ -14,7 +13,9 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
     dateStyle: 'medium',
 });
 
-const formattedInvoiceDate = computed(() => dateFormatter.format(new Date(props.invoice.date)));
+const formattedInvoiceDate = computed(() =>
+    dateFormatter.format(new Date(props.invoice.date)),
+);
 </script>
 
 <template>
@@ -29,22 +30,17 @@ const formattedInvoiceDate = computed(() => dateFormatter.format(new Date(props.
 </template>
 
 <style scoped>
-    .invoice-list-item {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 10px;
-        transition: all 0.3s ease;
-
-    }
-    .invoice-list-item a {
-        text-decoration: none;
-        color: inherit;
-    }
-
-
-
-
+.invoice-list-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 10px;
+    transition: all 0.3s ease;
+}
+.invoice-list-item a {
+    text-decoration: none;
+    color: inherit;
+}
 </style>

@@ -1,8 +1,9 @@
-import { chromium, type FullConfig } from '@playwright/test';
 import { execSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium  } from '@playwright/test';
+import type {FullConfig, Page} from '@playwright/test';
 import { e2eUser } from './helpers/auth';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -20,7 +21,7 @@ async function prepareDatabase(): Promise<void> {
     });
 }
 
-async function assertLoginPageIsReady(page: import('@playwright/test').Page): Promise<void> {
+async function assertLoginPageIsReady(page: Page): Promise<void> {
     await page.goto('/login');
     await page.waitForLoadState('domcontentloaded');
 

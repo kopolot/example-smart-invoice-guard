@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link } from '@inertiajs/vue3';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { show } from '@/routes/invoices';
 import type { HotInvoiceItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
 
 defineProps<{
     hotInvoices: HotInvoiceItem[];
@@ -43,7 +49,8 @@ const formatSeenAt = (value: string | null) => {
                             {{ item.number }}
                         </Link>
                         <p class="text-sm text-muted-foreground">
-                            {{ item.views }} views · {{ item.uniqueVisitors }} unique · heat
+                            {{ item.views }} views ·
+                            {{ item.uniqueVisitors }} unique · heat
                             {{ item.heat }}
                         </p>
                     </div>
@@ -56,7 +63,8 @@ const formatSeenAt = (value: string | null) => {
                 v-else
                 class="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground"
             >
-                No pulse yet. Open an invoice or share a payment link to start ranking attention.
+                No pulse yet. Open an invoice or share a payment link to start
+                ranking attention.
             </div>
         </CardContent>
     </Card>

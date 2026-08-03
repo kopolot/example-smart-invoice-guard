@@ -2,9 +2,8 @@
 
 namespace Tests\Exploratory;
 
-use Tests\TestCase;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\TestMail;
+use Tests\TestCase;
 
 class SmtpTest extends TestCase
 {
@@ -19,7 +18,7 @@ class SmtpTest extends TestCase
 
             $this->assertNotNull($message);
         } catch (\Throwable $e) {
-            $this->fail('SMTP error: ' . $e->getMessage());
+            $this->fail('SMTP error: '.$e->getMessage());
         }
     }
 }

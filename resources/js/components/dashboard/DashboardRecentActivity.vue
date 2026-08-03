@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import type { RecentActivityItem } from '@/types';
 
 defineProps<{
@@ -17,7 +23,10 @@ const formatActivityDate = (value: string) =>
     <Card>
         <CardHeader>
             <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Latest recorded status changes from your invoices.</CardDescription>
+            <CardDescription
+                >Latest recorded status changes from your
+                invoices.</CardDescription
+            >
         </CardHeader>
         <CardContent>
             <div v-if="recentActivity.length" class="space-y-3">
@@ -37,8 +46,12 @@ const formatActivityDate = (value: string) =>
                     </p>
                 </div>
             </div>
-            <div v-else class="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-                No activity yet. Create or update an invoice to start building your timeline.
+            <div
+                v-else
+                class="rounded-lg border border-dashed px-4 py-10 text-center text-sm text-muted-foreground"
+            >
+                No activity yet. Create or update an invoice to start building
+                your timeline.
             </div>
         </CardContent>
     </Card>

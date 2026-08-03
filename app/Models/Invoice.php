@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -24,7 +25,7 @@ use Illuminate\Support\Facades\Storage;
  * @property Carbon|null $date
  * @property Carbon|null $due_date
  * @property float $tax_rate
- * @property EncryptedData $tax_number
+ * @property string $tax_number
  * @property float $total_amount
  * @property InvoiceStatus $status
  * @property Carbon|null $created_at
@@ -43,6 +44,9 @@ class Invoice extends Model
 
     protected $appends = ['pdf_url'];
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

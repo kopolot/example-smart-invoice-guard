@@ -30,7 +30,10 @@ export const availableStatusesLabels: InvoiceStatusesLabels = {
     overdue: 'Overdue',
 };
 
-export const assignableStatusesLabels: Pick<InvoiceStatusesLabels, 'paid' | 'unpaid' | 'partially_paid'> = {
+export const assignableStatusesLabels: Pick<
+    InvoiceStatusesLabels,
+    'paid' | 'unpaid' | 'partially_paid'
+> = {
     paid: availableStatusesLabels.paid,
     unpaid: availableStatusesLabels.unpaid,
     partially_paid: availableStatusesLabels.partially_paid,

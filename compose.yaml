@@ -177,7 +177,6 @@ services:
     proxysql:
         image: proxysql/proxysql:2.5.5
         hostname: mariadb
-        container_name: pxc-proxysql
         volumes:
             - ./docker/proxysql.cnf:/etc/proxysql.cnf:ro
         depends_on:
@@ -192,6 +191,23 @@ services:
                 aliases:
                     - mariadb
             pxc-net:
+
+    # Performance / regression tests — `docker compose --profile k6 run --rm k6 ...`
+    # Joins the app network so CI can hit https://nginx:8443 without publishing host ports.
+    k6:
+        image: grafana/k6:1.8.0
+        profiles: ["k6"]
+        working_dir: /scripts
+        volumes:
+            - ./tests/k6:/scripts:ro
+            - ./tests/k6/results:/results
+        environment:
+            K6_BASE_URL: ${K6_BASE_URL:-https://nginx:8443}
+            K6_EMAIL: ${K6_EMAIL:-k6@example.com}
+            K6_PASSWORD: ${K6_PASSWORD:-password}
+            K6_API_TOKEN: ${K6_API_TOKEN:-}
+        networks:
+            - app
 
 volumes:
     php_data:

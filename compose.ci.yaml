@@ -1,9 +1,18 @@
 # CI / nektos-act overrides.
+#
+# Match the host UID/GID so bind-mounted writes (vendor/, node_modules/, storage/)
+# are owned by the runner user — no root, no post-hoc chmod for act cleanup.
+# Workflows must export CI_UID / CI_GID before `docker compose up` (see steps below).
 services:
     php:
         ports: !override []
-        # GHA runner UID ≠ image user `container` (1000). Without this, composer/npm
-        # cannot write composer.lock, vendor/, node_modules/ on the bind mount.
-        user: "0:0"
+        user: "${CI_UID:?set CI_UID to host uid}:${CI_GID:?set CI_GID to host gid}"
+        environment:
+            # Numeric users often have no /etc/passwd entry — keep caches off the bind mount.
+            HOME: /tmp
+            COMPOSER_HOME: /tmp/composer
+            npm_config_cache: /tmp/npm
     nginx:
         ports: !override []
+    k6:
+        user: "${CI_UID:?set CI_UID to host uid}:${CI_GID:?set CI_GID to host gid}"

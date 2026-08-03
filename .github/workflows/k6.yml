@@ -1,0 +1,133 @@
+name: k6 regression
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - master
+  pull_request:
+    branches:
+      - develop
+      - main
+      - master
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  XDEBUG_MODE: off
+  COMPOSE_FILE: compose.yaml:compose.ci.yaml
+  # Isolate from a developer's local compose project name (directory-based).
+  COMPOSE_PROJECT_NAME: sig-ci-k6
+  K6_BASE_URL: https://nginx:8443
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Export host UID/GID for compose
+        run: |
+          echo "CI_UID=$(id -u)" >> "$GITHUB_ENV"
+          echo "CI_GID=$(id -g)" >> "$GITHUB_ENV"
+
+      # Full HTTP stack: nginx → php-fpm → ProxySQL/PXC + Redis/Memcached/ES/RabbitMQ.
+      # compose.ci.yaml clears host ports; k6 reaches the app on the Docker network.
+      - name: Start application stack
+        run: docker compose up -d --build --wait nginx redis elasticsearch rabbitmq memcached
+
+      - name: Install PHP dependencies
+        # apk's /usr/bin/composer wraps php85 (missing extensions) — use image PHP + phar.
+        run: docker compose exec -T -e XDEBUG_MODE=off php /usr/local/bin/php /usr/bin/composer.phar install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Node dependencies
+        # package-lock.json is gitignored in this repo — cannot use npm ci on a fresh checkout.
+        run: docker compose exec -T php npm install
+
+      - name: Prepare application
+        run: |
+          docker compose exec -T php sh -lc 'test -f .env || cp .env.example .env'
+          # In-network URL so session cookies / redirects match k6's Host (nginx).
+          docker compose exec -T php sh -lc "sed -i 's|^APP_URL=.*|APP_URL=https://nginx:8443|' .env"
+          docker compose exec -T -e XDEBUG_MODE=off php php artisan key:generate --no-interaction --force
+          # ProxySQL may still be warming up after PXC --wait.
+          # Do NOT use `db:show` — it queries information_schema.GLOBAL_STATUS,
+          # which MySQL 8 / ProxySQL do not expose (42S02 Unknown table GLOBAL_STATUS).
+          for i in $(seq 1 60); do
+            if docker compose exec -T -e XDEBUG_MODE=off php php artisan tinker --execute 'DB::select("select 1");' >/dev/null 2>&1; then
+              echo "Database is reachable"
+              break
+            fi
+            echo "Waiting for database ($i/60)..."
+            sleep 5
+            if [ "$i" -eq 60 ]; then
+              echo "Timed out waiting for database"
+              docker compose logs --no-color --tail=80 proxysql pxc-node1
+              exit 1
+            fi
+          done
+          docker compose exec -T -e XDEBUG_MODE=off php php artisan migrate --force --no-interaction
+          docker compose exec -T -e XDEBUG_MODE=off php php artisan storage:link --no-interaction || true
+
+      - name: Build assets
+        run: docker compose exec -T php npm run build
+
+      - name: Wait for HTTPS /up
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose exec -T php php -r '
+              $ctx = stream_context_create(["ssl" => ["verify_peer" => false, "verify_peer_name" => false]]);
+              $body = @file_get_contents("https://nginx:8443/up", false, $ctx);
+              exit(($body !== false && str_contains((string) $body, "Application up")) ? 0 : 1);
+            '; then
+              echo "Application is up"
+              exit 0
+            fi
+            echo "Waiting for https://nginx:8443/up ($i/60)..."
+            sleep 5
+          done
+          echo "Timed out waiting for /up"
+          docker compose logs --no-color --tail=80 nginx php
+          exit 1
+
+      - name: Seed k6 fixture data
+        run: |
+          docker compose exec -T -e XDEBUG_MODE=off php php artisan cache:clear --no-interaction
+          docker compose exec -T -e XDEBUG_MODE=off php php artisan db:seed --class=K6Seeder --force --no-interaction
+          docker compose exec -T -e XDEBUG_MODE=off php php artisan invoices:reindex --fresh --no-interaction
+
+      - name: Run k6 regression
+        id: k6
+        run: |
+          mkdir -p tests/k6/results
+          TOKEN="$(docker compose exec -T php cat storage/app/private/k6/api-token.txt | tr -d '\r\n')"
+          test -n "$TOKEN"
+          docker compose --profile k6 run --rm -T \
+            -e K6_BASE_URL="${K6_BASE_URL}" \
+            -e K6_API_TOKEN="${TOKEN}" \
+            k6 run \
+              --insecure-skip-tls-verify \
+              --summary-export=/results/regression-summary.json \
+              regression.js
+
+      - name: Upload k6 summary
+        # act has no Actions artifact backend (ACTIONS_RUNTIME_TOKEN).
+        if: ${{ always() && steps.k6.outcome != 'skipped' && env.ACT == '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: k6-regression-summary
+          path: tests/k6/results/regression-summary.json
+          if-no-files-found: ignore
+
+      # Skip under nektos/act (ACT=true) so a local stack is not torn down.
+      - name: Stop CI services
+        if: ${{ always() && env.ACT == '' }}
+        run: docker compose --profile k6 down --remove-orphans -v

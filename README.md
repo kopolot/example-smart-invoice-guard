@@ -272,10 +272,13 @@ export K6_API_TOKEN="$(docker compose exec -T php cat storage/app/private/k6/api
 npm run test:k6:smoke
 # albo: k6 run --insecure-skip-tls-verify tests/k6/smoke.js
 
-# 3. Load (web browse + API PDF ~30 req/min)
+# 3. Regression (bramka CI — te same ścieżki + budżety latency per endpoint)
+npm run test:k6:regression
+
+# 4. Load (web browse + API PDF ~45 req/min)
 npm run test:k6:load
 
-# 4. Stress API (powyżej limitu 60/min — oczekiwane 429)
+# 5. Stress API (powyżej limitu 60/min — oczekiwane 429)
 npm run test:k6:stress-api
 ```
 
@@ -284,6 +287,7 @@ Scenariusze w `tests/k6/`:
 | Skrypt | Cel |
 | --- | --- |
 | `smoke.js` | Publiczne `/`, login Fortify, dashboard/invoices/search, 1× API PDF |
+| `regression.js` | Bramka CI: smoke + ostrzejsze `checks` / `http_req_failed` + p95 per endpoint |
 | `load.js` | Ramping VUs na UI + constant-arrival-rate na `POST /api/invoice/generate` |
 | `stress-api.js` | Napór na throttle `invoice-api` (200/429, bez 5xx) |
 
@@ -291,11 +295,29 @@ Login Fortify jest limitowany (5/min) — skrypty logują się **raz** w `setup(
 Po wcześniejszym 429 (login **lub** `invoice-api`): `docker compose exec php php artisan cache:clear` (limiter w Memcached).
 Przed `test:k6:load` zawsze czyść cache — inaczej bucket 60/min z poprzedniego runu wygeneruje falę 429 na `/api/invoice/generate`.
 
-Zmienne: `K6_BASE_URL`, `K6_EMAIL`, `K6_PASSWORD`, `K6_API_TOKEN`, `K6_API_RATE`, `K6_SMOKE_VUS`, `K6_SMOKE_ITERS`, `K6_LOAD_DURATION`.
+Zmienne: `K6_BASE_URL`, `K6_EMAIL`, `K6_PASSWORD`, `K6_API_TOKEN`, `K6_API_RATE`, `K6_SMOKE_VUS`, `K6_SMOKE_ITERS`, `K6_REGRESSION_VUS`, `K6_REGRESSION_ITERS`, `K6_LOAD_DURATION`.
 Nie używaj `K6_VUS` / `K6_DURATION` / `K6_ITERATIONS` — to wbudowane override’y opcji k6.
 Certyfikat self-signed: flagi `--insecure-skip-tls-verify` / `insecureSkipTLSVerify` w opcjach skryptów.
 PDF-y z API lądują w `storage/app/public/invoices/` — po intensywnych runach warto posprzątać.
 Jeśli wyszukiwanie ma iść przez Elasticsearch, po seedzie: `php artisan invoices:reindex --fresh`.
+
+### CI (GitHub Actions)
+
+Workflow `.github/workflows/k6.yml` podnosi pełny stack Compose (w tym PXC/ProxySQL/nginx), seeduje `K6Seeder`, reindeksuje ES i odpala `regression.js` przez usługę `k6` (profil Compose) pod `https://nginx:8443` w sieci Dockera — bez publikowania portów na hoście (`compose.ci.yaml`).
+
+Lokalnie ten sam przebieg:
+
+```bash
+export COMPOSE_FILE=compose.yaml:compose.ci.yaml
+export COMPOSE_PROJECT_NAME=sig-ci-k6
+export K6_BASE_URL=https://nginx:8443
+# …up stack, migrate, build, seed, reindex…
+TOKEN="$(docker compose exec -T php cat storage/app/private/k6/api-token.txt | tr -d '\r\n')"
+docker compose --profile k6 run --rm -T \
+  -e K6_BASE_URL="$K6_BASE_URL" \
+  -e K6_API_TOKEN="$TOKEN" \
+  k6 run --insecure-skip-tls-verify --summary-export=/results/regression-summary.json regression.js
+```
 
 ---
 

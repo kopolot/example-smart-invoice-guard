@@ -57,5 +57,5 @@ jobs:
 
       # Skip under nektos/act (ACT=true) so a local stack is not torn down.
       - name: Stop CI services
-        if: always()
+        if: ${{ always() && env.ACT == '' }}
         run: docker compose down --remove-orphans

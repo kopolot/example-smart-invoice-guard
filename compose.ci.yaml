@@ -1,6 +1,9 @@
-# CI / nektos-act overrides: no host port binds (avoids clashes with a local stack).
+# CI / nektos-act overrides.
 services:
-  php:
-    ports: !override []
-  nginx:
-    ports: !override []
+    php:
+        ports: !override []
+        # GHA runner UID ≠ image user `container` (1000). Without this, composer/npm
+        # cannot write composer.lock, vendor/, node_modules/ on the bind mount.
+        user: "0:0"
+    nginx:
+        ports: !override []

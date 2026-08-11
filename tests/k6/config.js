@@ -2,7 +2,7 @@
  * Shared k6 configuration for Smart Invoice Guard.
  *
  * Env:
- *   K6_BASE_URL         default https://localhost:8443
+ *   K6_BASE_URL         default https://smart-invoice-guard.com:8443
  *   K6_EMAIL            default k6@example.com
  *   K6_PASSWORD         default password
  *   K6_API_TOKEN        Sanctum bearer token (from K6Seeder)
@@ -13,7 +13,7 @@
  *   K6_LOAD_DURATION    load/api/regression max duration (do NOT use K6_DURATION)
  *   K6_API_RATE         API arrivals per minute in load.js
  */
-export const BASE_URL = (__ENV.K6_BASE_URL || 'https://localhost:8443').replace(/\/$/, '');
+export const BASE_URL = (__ENV.K6_BASE_URL || 'https://smart-invoice-guard.com:8443').replace(/\/$/, '');
 
 export const credentials = {
     email: __ENV.K6_EMAIL || 'k6@example.com',

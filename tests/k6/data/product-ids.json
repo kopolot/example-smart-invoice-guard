@@ -1,0 +1,7 @@
+[
+    { "id": "prod-001", "name": "Hosting Basic" },
+    { "id": "prod-002", "name": "Hosting Pro" },
+    { "id": "prod-003", "name": "Hosting Business" },
+    { "id": "prod-004", "name": "Domain .com" },
+    { "id": "prod-005", "name": "SSL Certificate" }
+]

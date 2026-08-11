@@ -35,3 +35,4 @@ package-lock.json
 /tests/e2e/.auth
 /storage/app/k6
 /tests/k6/results
+/tests/k6/data/api-tokens.json

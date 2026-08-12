@@ -1,0 +1,229 @@
+# Big SaaS — profile zasobów per plan / klaster danych.
+# Używane przez compose.big-saas.yaml, skrypt generate-proxysql.sh oraz config/big-saas.php.
+#
+# Skala produkcyjna (K8s / VM fleet): wartości poniżej mapują 1:1 na
+#   - PHP-FPM pool limits
+#   - ProxySQL hostgroup weights
+#   - PXC cluster sizing (CPU/RAM/disk w IaC)
+# Skala lokalna (Docker): te same proporcje, mniejsze absolutne liczby.
+
+version: 1
+
+# Control plane — rejestr tenantów, routing, billing metadata (osobny klaster PXC)
+control_plane:
+  cluster_name: sig-control
+  pxc_nodes: 3
+  proxysql:
+    hostname: control-db
+    max_connections: 512
+    threads: 2
+  database: tenant_registry
+  resources:
+    cpu: "2"
+    memory: 4Gi
+    storage: 20Gi
+
+# Wspólna warstwa — użytkownicy free / starter (shared DB per tenant, jeden klaster PXC)
+shared:
+  tier: normal
+  cluster_name: sig-shared
+  pxc_nodes: 3
+  proxysql:
+    hostname: shared-db
+    max_connections: 2048
+    threads: 4
+  isolation: database_per_tenant
+  php_fpm:
+    pool: www-shared
+    replicas: 2
+    pm: dynamic
+    pm.max_children: 24
+    pm.start_servers: 6
+    pm.min_spare_servers: 4
+    pm.max_spare_servers: 12
+    pm.max_requests: 500
+    request_terminate_timeout: 120
+  nginx:
+    weight: 70
+    max_conns: 512
+  resources:
+    cpu_per_replica: "1"
+    memory_per_replica: 1Gi
+    pxc_cpu_per_node: "2"
+    pxc_memory_per_node: 4Gi
+    pxc_storage_per_node: 100Gi
+  limits:
+    max_invoices: 500
+    max_api_rpm: 60
+    max_queue_workers: 2
+    elasticsearch: shared_index
+
+# Premium — dedykowany klaster PXC na shard tenantów (N tenantów / klaster)
+premium:
+  tier: premium
+  clusters:
+    - id: 1
+      cluster_name: sig-premium-1
+      pxc_nodes: 3
+      proxysql:
+        hostname: premium-db-1
+        max_connections: 1024
+        threads: 4
+      tenant_capacity: 50
+      php_fpm:
+        pool: www-premium-1
+        replicas: 2
+        pm.max_children: 48
+        pm.start_servers: 8
+        pm.min_spare_servers: 6
+        pm.max_spare_servers: 16
+        pm.max_requests: 1000
+        request_terminate_timeout: 180
+      nginx:
+        weight: 20
+        max_conns: 256
+      resources:
+        cpu_per_replica: "2"
+        memory_per_replica: 2Gi
+        pxc_cpu_per_node: "4"
+        pxc_memory_per_node: 8Gi
+        pxc_storage_per_node: 250Gi
+      limits:
+        max_invoices: 50000
+        max_api_rpm: 300
+        max_queue_workers: 8
+        elasticsearch: dedicated_index
+
+    - id: 2
+      cluster_name: sig-premium-2
+      pxc_nodes: 3
+      proxysql:
+        hostname: premium-db-2
+        max_connections: 1024
+        threads: 4
+      tenant_capacity: 50
+      php_fpm:
+        pool: www-premium-2
+        replicas: 2
+        pm.max_children: 48
+        pm.start_servers: 8
+        pm.min_spare_servers: 6
+        pm.max_spare_servers: 16
+        pm.max_requests: 1000
+        request_terminate_timeout: 180
+      nginx:
+        weight: 20
+        max_conns: 256
+      resources:
+        cpu_per_replica: "2"
+        memory_per_replica: 2Gi
+        pxc_cpu_per_node: "4"
+        pxc_memory_per_node: 8Gi
+        pxc_storage_per_node: 250Gi
+      limits:
+        max_invoices: 50000
+        max_api_rpm: 300
+        max_queue_workers: 8
+        elasticsearch: dedicated_index
+
+    - id: 3
+      cluster_name: sig-premium-3
+      pxc_nodes: 3
+      proxysql:
+        hostname: premium-db-3
+        max_connections: 1024
+        threads: 4
+      tenant_capacity: 50
+      php_fpm:
+        pool: www-premium-3
+        replicas: 2
+        pm.max_children: 48
+        pm.start_servers: 8
+        pm.min_spare_servers: 6
+        pm.max_spare_servers: 16
+        pm.max_requests: 1000
+        request_terminate_timeout: 180
+      nginx:
+        weight: 20
+        max_conns: 256
+      resources:
+        cpu_per_replica: "2"
+        memory_per_replica: 2Gi
+        pxc_cpu_per_node: "4"
+        pxc_memory_per_node: 8Gi
+        pxc_storage_per_node: 250Gi
+      limits:
+        max_invoices: 50000
+        max_api_rpm: 300
+        max_queue_workers: 8
+        elasticsearch: dedicated_index
+
+# Enterprise — 1 tenant = 1 klaster PXC (+ opcjonalnie dedykowane PHP-FPM / ES / Redis)
+enterprise:
+  tier: enterprise
+  pattern: dedicated_cluster_per_tenant
+  clusters:
+    - id: 1
+      cluster_name: sig-enterprise-1
+      pxc_nodes: 3
+      proxysql:
+        hostname: enterprise-db-1
+        max_connections: 2048
+        threads: 8
+      php_fpm:
+        pool: www-enterprise-1
+        replicas: 3
+        pm.max_children: 96
+        pm.start_servers: 16
+        pm.min_spare_servers: 12
+        pm.max_spare_servers: 32
+        pm.max_requests: 2000
+        request_terminate_timeout: 300
+      nginx:
+        weight: 10
+        max_conns: 128
+      resources:
+        cpu_per_replica: "4"
+        memory_per_replica: 4Gi
+        pxc_cpu_per_node: "8"
+        pxc_memory_per_node: 16Gi
+        pxc_storage_per_node: 500Gi
+      limits:
+        max_invoices: null
+        max_api_rpm: 1000
+        max_queue_workers: 32
+        elasticsearch: isolated_cluster
+        redis: dedicated_instance
+        rabbitmq: dedicated_vhost
+
+  # Szablon dla kolejnych klastrów enterprise N (provisionowany przez IaC)
+  cluster_template:
+    cluster_name: "sig-enterprise-{N}"
+    proxysql:
+      hostname: "enterprise-db-{N}"
+    php_fpm:
+      pool: "www-enterprise-{N}"
+      replicas: 3
+
+# Warstwy współdzielone (globalne lub sharded)
+global_services:
+  redis:
+    mode: cluster
+    nodes: 6
+    use_cases: [sessions, invoice_pulse, rate_limit_counters]
+  rabbitmq:
+    mode: federated
+    vhosts: [shared, premium, enterprise]
+  elasticsearch:
+    shared_cluster:
+      nodes: 3
+      indices: [invoices_shared]
+    premium_clusters:
+      - id: 1
+        nodes: 3
+      - id: 2
+        nodes: 3
+      - id: 3
+        nodes: 3
+  memcached:
+    pools: [dashboard_shared, dashboard_premium]

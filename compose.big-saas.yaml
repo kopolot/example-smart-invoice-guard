@@ -1,0 +1,351 @@
+# Big SaaS overlay — wieloklastrowa architektura (profile: big-saas).
+#
+# Uruchomienie (wymaga ~16–32 GB RAM dla pełnego profilu clusters):
+#   docker compose -f compose.yaml -f compose.big-saas.yaml --profile big-saas up -d --build
+#
+# Tylko warstwa app (wielu PHP-FPM + Nginx LB, istniejący PXC z compose.yaml):
+#   docker compose -f compose.yaml -f compose.big-saas.yaml --profile big-saas --profile big-saas-app up -d
+#
+# Dodatkowe klastry PXC (premium 1–3, enterprise, control):
+#   docker compose -f compose.yaml -f compose.big-saas.yaml --profile big-saas --profile big-saas-clusters up -d
+#
+# Istniejący klaster PXC (pxc-node1..3 + proxysql/mariadb) = shared tier (normal users).
+
+x-php-big-saas: &php-big-saas
+    image: smart-invoice-guard/php:8.5
+    build:
+        context: docker
+        dockerfile: php.Dockerfile
+    volumes:
+        - .:/var/www/html
+        - php_data:/var/lib/php/volume/
+        - ./docker/php.ini:/usr/local/etc/php/php.ini
+    working_dir: /var/www/html
+    extra_hosts:
+        - "host.docker.internal:host-gateway"
+    networks:
+        - app
+
+x-pxc-single: &pxc-single
+    image: percona/percona-xtradb-cluster:8.0
+    networks:
+        - pxc-net
+    environment:
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_DATABASE: laravel
+        MYSQL_USER: laravel
+        MYSQL_PASSWORD: laravel
+        XTRABACKUP_PASSWORD: xtrabackup
+    volumes:
+        - ./docker/pxc.cnf:/etc/percona-xtradb-cluster.conf.d/pxc.cnf:ro
+    healthcheck:
+        test:
+            [
+                "CMD-SHELL",
+                'mysql -h127.0.0.1 -uroot -proot -Nse "SELECT 1" 2>/dev/null',
+            ]
+        interval: 10s
+        timeout: 5s
+        retries: 20
+        start_period: 60s
+
+services:
+    # Wyłącz single-instance stack gdy używasz big-saas
+    php:
+        profiles: ["legacy-single"]
+
+    nginx:
+        profiles: ["legacy-single"]
+
+    # --- Nginx load balancer (routing tier → upstream) ---
+    nginx-lb:
+        profiles: ["big-saas", "big-saas-app"]
+        image: smart-invoice-guard/nginx:1.27
+        hostname: nginx
+        build:
+            context: docker
+            dockerfile: nginx.Dockerfile
+        volumes:
+            - .:/var/www/html:ro
+            - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./docker/big-saas/nginx/upstreams.conf:/etc/nginx/conf.d/00-upstreams.conf:ro
+            - ./docker/big-saas/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+        ports:
+            - 8080:8080
+            - 8443:8443
+        depends_on:
+            - php-shared-1
+            - php-shared-2
+        networks:
+            - app
+
+    # --- Normal / shared tier: 2 repliki PHP-FPM ---
+    php-shared-1:
+        <<: *php-big-saas
+        profiles: ["big-saas", "big-saas-app"]
+        hostname: php-shared-1
+        volumes:
+            - .:/var/www/html
+            - php_data:/var/lib/php/volume/
+            - ./docker/php.ini:/usr/local/etc/php/php.ini
+            - ./docker/big-saas/php-fpm/shared.conf:/usr/local/etc/php-fpm.d/zz-app.conf
+        depends_on:
+            - proxysql
+
+    php-shared-2:
+        <<: *php-big-saas
+        profiles: ["big-saas", "big-saas-app"]
+        hostname: php-shared-2
+        volumes:
+            - .:/var/www/html
+            - php_data:/var/lib/php/volume/
+            - ./docker/php.ini:/usr/local/etc/php/php.ini
+            - ./docker/big-saas/php-fpm/shared.conf:/usr/local/etc/php-fpm.d/zz-app.conf
+        depends_on:
+            - proxysql
+
+    # --- Premium tier: 1 PHP-FPM per klaster (shard 1..3) ---
+    php-premium-1:
+        <<: *php-big-saas
+        profiles: ["big-saas", "big-saas-app"]
+        hostname: php-premium-1
+        environment:
+            BIG_SAAS_TIER: premium
+            BIG_SAAS_PREMIUM_CLUSTER: "1"
+        volumes:
+            - .:/var/www/html
+            - php_data:/var/lib/php/volume/
+            - ./docker/php.ini:/usr/local/etc/php/php.ini
+            - ./docker/big-saas/php-fpm/premium.conf:/usr/local/etc/php-fpm.d/zz-app.conf
+        depends_on:
+            proxysql-premium-1:
+                condition: service_started
+
+    php-premium-2:
+        <<: *php-big-saas
+        profiles: ["big-saas", "big-saas-app"]
+        hostname: php-premium-2
+        environment:
+            BIG_SAAS_TIER: premium
+            BIG_SAAS_PREMIUM_CLUSTER: "2"
+        volumes:
+            - .:/var/www/html
+            - php_data:/var/lib/php/volume/
+            - ./docker/php.ini:/usr/local/etc/php/php.ini
+            - ./docker/big-saas/php-fpm/premium.conf:/usr/local/etc/php-fpm.d/zz-app.conf
+        depends_on:
+            proxysql-premium-2:
+                condition: service_started
+
+    php-premium-3:
+        <<: *php-big-saas
+        profiles: ["big-saas", "big-saas-app"]
+        hostname: php-premium-3
+        environment:
+            BIG_SAAS_TIER: premium
+            BIG_SAAS_PREMIUM_CLUSTER: "3"
+        volumes:
+            - .:/var/www/html
+            - php_data:/var/lib/php/volume/
+            - ./docker/php.ini:/usr/local/etc/php/php.ini
+            - ./docker/big-saas/php-fpm/premium.conf:/usr/local/etc/php-fpm.d/zz-app.conf
+        depends_on:
+            proxysql-premium-3:
+                condition: service_started
+
+    # --- Enterprise tier: 3 repliki PHP-FPM → 1 dedykowany klaster ---
+    php-enterprise-1a:
+        <<: *php-big-saas
+        profiles: ["big-saas", "big-saas-app"]
+        hostname: php-enterprise-1a
+        environment:
+            BIG_SAAS_TIER: enterprise
+            BIG_SAAS_ENTERPRISE_CLUSTER: "1"
+        volumes:
+            - .:/var/www/html
+            - php_data:/var/lib/php/volume/
+            - ./docker/php.ini:/usr/local/etc/php/php.ini
+            - ./docker/big-saas/php-fpm/enterprise.conf:/usr/local/etc/php-fpm.d/zz-app.conf
+        depends_on:
+            proxysql-enterprise-1:
+                condition: service_started
+
+    php-enterprise-1b:
+        <<: *php-big-saas
+        profiles: ["big-saas", "big-saas-app"]
+        hostname: php-enterprise-1b
+        environment:
+            BIG_SAAS_TIER: enterprise
+            BIG_SAAS_ENTERPRISE_CLUSTER: "1"
+        volumes:
+            - .:/var/www/html
+            - php_data:/var/lib/php/volume/
+            - ./docker/php.ini:/usr/local/etc/php/php.ini
+            - ./docker/big-saas/php-fpm/enterprise.conf:/usr/local/etc/php-fpm.d/zz-app.conf
+        depends_on:
+            proxysql-enterprise-1:
+                condition: service_started
+
+    php-enterprise-1c:
+        <<: *php-big-saas
+        profiles: ["big-saas", "big-saas-app"]
+        hostname: php-enterprise-1c
+        environment:
+            BIG_SAAS_TIER: enterprise
+            BIG_SAAS_ENTERPRISE_CLUSTER: "1"
+        volumes:
+            - .:/var/www/html
+            - php_data:/var/lib/php/volume/
+            - ./docker/php.ini:/usr/local/etc/php/php.ini
+            - ./docker/big-saas/php-fpm/enterprise.conf:/usr/local/etc/php-fpm.d/zz-app.conf
+        depends_on:
+            proxysql-enterprise-1:
+                condition: service_started
+
+    # Alias shared-db → istniejący ProxySQL (normal tier)
+    proxysql:
+        networks:
+            app:
+                aliases:
+                    - mariadb
+                    - shared-db
+
+    # --- Control plane DB (tenant_registry) ---
+    pxc-control:
+        <<: *pxc-single
+        profiles: ["big-saas", "big-saas-clusters"]
+        hostname: pxc-control
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: tenant_registry
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: laravel
+            CLUSTER_NAME: sig-control
+            XTRABACKUP_PASSWORD: xtrabackup
+        volumes:
+            - ./docker/pxc.cnf:/etc/percona-xtradb-cluster.conf.d/pxc.cnf:ro
+            - pxc_control_data:/var/lib/mysql
+
+    proxysql-control:
+        profiles: ["big-saas", "big-saas-clusters"]
+        image: proxysql/proxysql:2.5.5
+        hostname: control-db
+        volumes:
+            - ./docker/big-saas/proxysql/control.cnf:/etc/proxysql.cnf:ro
+        depends_on:
+            pxc-control:
+                condition: service_healthy
+        networks:
+            app:
+                aliases:
+                    - control-db
+            pxc-net:
+
+    # --- Premium PXC clusters (dev: 1 węzeł; prod: 3 węzły × N klastrów) ---
+    pxc-premium-1:
+        <<: *pxc-single
+        profiles: ["big-saas", "big-saas-clusters"]
+        hostname: pxc-premium-1
+        environment:
+            CLUSTER_NAME: sig-premium-1
+        volumes:
+            - ./docker/pxc.cnf:/etc/percona-xtradb-cluster.conf.d/pxc.cnf:ro
+            - pxc_premium_1_data:/var/lib/mysql
+
+    proxysql-premium-1:
+        profiles: ["big-saas", "big-saas-clusters"]
+        image: proxysql/proxysql:2.5.5
+        hostname: premium-db-1
+        volumes:
+            - ./docker/big-saas/proxysql/premium-1.cnf:/etc/proxysql.cnf:ro
+        depends_on:
+            pxc-premium-1:
+                condition: service_healthy
+        networks:
+            app:
+                aliases:
+                    - premium-db-1
+            pxc-net:
+
+    pxc-premium-2:
+        <<: *pxc-single
+        profiles: ["big-saas", "big-saas-clusters"]
+        hostname: pxc-premium-2
+        environment:
+            CLUSTER_NAME: sig-premium-2
+        volumes:
+            - ./docker/pxc.cnf:/etc/percona-xtradb-cluster.conf.d/pxc.cnf:ro
+            - pxc_premium_2_data:/var/lib/mysql
+
+    proxysql-premium-2:
+        profiles: ["big-saas", "big-saas-clusters"]
+        image: proxysql/proxysql:2.5.5
+        hostname: premium-db-2
+        volumes:
+            - ./docker/big-saas/proxysql/premium-2.cnf:/etc/proxysql.cnf:ro
+        depends_on:
+            pxc-premium-2:
+                condition: service_healthy
+        networks:
+            app:
+                aliases:
+                    - premium-db-2
+            pxc-net:
+
+    pxc-premium-3:
+        <<: *pxc-single
+        profiles: ["big-saas", "big-saas-clusters"]
+        hostname: pxc-premium-3
+        environment:
+            CLUSTER_NAME: sig-premium-3
+        volumes:
+            - ./docker/pxc.cnf:/etc/percona-xtradb-cluster.conf.d/pxc.cnf:ro
+            - pxc_premium_3_data:/var/lib/mysql
+
+    proxysql-premium-3:
+        profiles: ["big-saas", "big-saas-clusters"]
+        image: proxysql/proxysql:2.5.5
+        hostname: premium-db-3
+        volumes:
+            - ./docker/big-saas/proxysql/premium-3.cnf:/etc/proxysql.cnf:ro
+        depends_on:
+            pxc-premium-3:
+                condition: service_healthy
+        networks:
+            app:
+                aliases:
+                    - premium-db-3
+            pxc-net:
+
+    # --- Enterprise cluster 1 ---
+    pxc-enterprise-1:
+        <<: *pxc-single
+        profiles: ["big-saas", "big-saas-clusters"]
+        hostname: pxc-enterprise-1
+        environment:
+            CLUSTER_NAME: sig-enterprise-1
+        volumes:
+            - ./docker/pxc.cnf:/etc/percona-xtradb-cluster.conf.d/pxc.cnf:ro
+            - pxc_enterprise_1_data:/var/lib/mysql
+
+    proxysql-enterprise-1:
+        profiles: ["big-saas", "big-saas-clusters"]
+        image: proxysql/proxysql:2.5.5
+        hostname: enterprise-db-1
+        volumes:
+            - ./docker/big-saas/proxysql/enterprise-1.cnf:/etc/proxysql.cnf:ro
+        depends_on:
+            pxc-enterprise-1:
+                condition: service_healthy
+        networks:
+            app:
+                aliases:
+                    - enterprise-db-1
+            pxc-net:
+
+volumes:
+    pxc_control_data:
+    pxc_premium_1_data:
+    pxc_premium_2_data:
+    pxc_premium_3_data:
+    pxc_enterprise_1_data:

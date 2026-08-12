@@ -1,0 +1,44 @@
+# ProxySQL — enterprise cluster 1 (dedykowany tenant)
+datadir="/var/lib/proxysql"
+
+admin_variables=
+{
+    admin_credentials="admin:admin"
+    mysql_ifaces="0.0.0.0:6032"
+}
+
+mysql_variables=
+{
+    threads=8
+    max_connections=2048
+    interfaces="0.0.0.0:3306"
+    default_schema="laravel"
+    server_version="8.0.36"
+    monitor_username="root"
+    monitor_password="root"
+}
+
+mysql_servers =
+(
+    { address="pxc-enterprise-1", port=3306, hostgroup=10, max_connections=400, weight=1000 }
+)
+
+mysql_users =
+(
+    { username="laravel", password="laravel", default_hostgroup=10, transaction_persistent=1, active=1 },
+    { username="root", password="root", default_hostgroup=10, transaction_persistent=1, active=1 }
+)
+
+mysql_galera_hostgroups =
+(
+    {
+        writer_hostgroup=10
+        backup_writer_hostgroup=20
+        reader_hostgroup=30
+        offline_hostgroup=40
+        max_writers=1
+        writer_is_also_reader=1
+        max_transactions_behind=100
+        active=1
+    }
+)

@@ -20,6 +20,8 @@ services:
         build:
             context: docker
             dockerfile: php.Dockerfile
+            args:
+                ELASTIC_APM_PHP_AGENT_VERSION: ${ELASTIC_APM_PHP_AGENT_VERSION:-1.17.0}
         volumes:
             - .:/var/www/html
             - php_data:/var/lib/php/volume/
@@ -30,6 +32,15 @@ services:
             - "host.docker.internal:host-gateway"
         ports:
             - 5173:5173
+        environment:
+            ELASTIC_APM_ENABLED: ${ELASTIC_APM_ENABLED:-true}
+            ELASTIC_APM_SERVER_URL: ${ELASTIC_APM_SERVER_URL:-http://apm-server:8200}
+            ELASTIC_APM_SERVICE_NAME: ${ELASTIC_APM_SERVICE_NAME:-smart-invoice-guard}
+            ELASTIC_APM_SERVICE_VERSION: ${ELASTIC_APM_SERVICE_VERSION:-local}
+            ELASTIC_APM_ENVIRONMENT: ${ELASTIC_APM_ENVIRONMENT:-local}
+            ELASTIC_APM_LOG_LEVEL: ${ELASTIC_APM_LOG_LEVEL:-WARNING}
+            ELASTIC_APM_LOG_LEVEL_STDERR: ${ELASTIC_APM_LOG_LEVEL_STDERR:-WARNING}
+            ELASTIC_APM_GLOBAL_LABELS: ${ELASTIC_APM_GLOBAL_LABELS:-app=smart-invoice-guard,stack=local}
         depends_on:
             - proxysql
         networks:
@@ -90,8 +101,11 @@ services:
         hostname: elasticsearch
         environment:
             - discovery.type=single-node
-            - xpack.security.enabled=false
+            # Fleet / Integrations require security. Single-node allows HTTP without TLS.
+            - xpack.security.enabled=true
             - xpack.security.http.ssl.enabled=false
+            - xpack.security.transport.ssl.enabled=false
+            - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
             - ES_JAVA_OPTS=-Xms512m -Xmx512m
             - cluster.name=smart-invoice-guard
             - cluster.routing.allocation.disk.threshold_enabled=false
@@ -104,12 +118,93 @@ services:
             test:
                 [
                     "CMD-SHELL",
-                    "curl -fsS http://localhost:9200/_cluster/health || exit 1",
+                    "curl -fsS -u elastic:${ELASTIC_PASSWORD:-changeme} http://localhost:9200/_cluster/health || exit 1",
                 ]
             interval: 10s
             timeout: 5s
             retries: 30
             start_period: 40s
+        networks:
+            - app
+
+    kibana:
+        image: docker.elastic.co/kibana/kibana:8.15.5
+        hostname: kibana
+        environment:
+            ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+            ELASTICSEARCH_USERNAME: kibana_system
+            ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-changeme}
+            TELEMETRY_ENABLED: "false"
+            # Required for alerting / saved objects / Fleet session encryption.
+            XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-localdevlocaldevlocaldevlocaldev12}
+            XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-localdevlocaldevlocaldevlocaldev12}
+            XPACK_SECURITY_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-localdevlocaldevlocaldevlocaldev12}
+            # Served behind Nginx at /kibana/
+            SERVER_BASEPATH: /kibana
+            SERVER_REWRITEBASEPATH: "true"
+            SERVER_PUBLICBASEURL: ${KIBANA_PUBLIC_BASE_URL:-https://localhost:8443/kibana}
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+            apm-init:
+                condition: service_completed_successfully
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "curl -fsS http://localhost:5601/kibana/api/status || exit 1",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 30
+            start_period: 90s
+        networks:
+            - app
+
+    apm-server:
+        image: docker.elastic.co/apm/apm-server:8.15.5
+        hostname: apm-server
+        command: >
+            apm-server -e --strict.perms=false
+        environment:
+            ELASTICSEARCH_USERNAME: elastic
+            ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD:-changeme}
+            KIBANA_USERNAME: elastic
+            KIBANA_PASSWORD: ${ELASTIC_PASSWORD:-changeme}
+        volumes:
+            - ./docker/apm-server.yml:/usr/share/apm-server/apm-server.yml:ro
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+            apm-init:
+                condition: service_completed_successfully
+            kibana:
+                condition: service_healthy
+        # Official image often has no curl — probe the socket instead.
+        healthcheck:
+            test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8200'"]
+            interval: 10s
+            timeout: 5s
+            retries: 30
+            start_period: 20s
+        networks:
+            - app
+
+    # Sets kibana_system password + creates .apm-* indices for central config / sourcemaps.
+    apm-init:
+        image: curlimages/curl:8.12.1
+        environment:
+            ELASTICSEARCH_HOST: http://elasticsearch:9200
+            ELASTICSEARCH_USERNAME: elastic
+            ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-changeme}
+            KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-changeme}
+        volumes:
+            - ./docker/apm-init.sh:/apm-init.sh:ro
+        entrypoint: ["/bin/sh", "/apm-init.sh"]
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+        restart: "no"
         networks:
             - app
 

@@ -328,9 +328,21 @@ class InvoiceSearchService
 
     private function client(): Client
     {
-        return $this->client ??= ClientBuilder::create()
+        if ($this->client instanceof Client) {
+            return $this->client;
+        }
+
+        $builder = ClientBuilder::create()
             ->setHosts([(string) config('elasticsearch.host')])
-            ->setRetries(1)
-            ->build();
+            ->setRetries(1);
+
+        $username = config('elasticsearch.username');
+        $password = config('elasticsearch.password');
+
+        if (is_string($username) && $username !== '' && is_string($password) && $password !== '') {
+            $builder->setBasicAuthentication($username, $password);
+        }
+
+        return $this->client = $builder->build();
     }
 }

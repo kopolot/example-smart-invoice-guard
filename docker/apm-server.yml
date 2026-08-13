@@ -1,0 +1,25 @@
+apm-server:
+  host: "0.0.0.0:8200"
+  agent.config.cache.expiration: 30s
+  kibana:
+    enabled: true
+    host: "kibana:5601"
+    protocol: http
+    path: "/kibana"
+    username: ${KIBANA_USERNAME:elastic}
+    password: ${KIBANA_PASSWORD:changeme}
+
+queue.mem:
+  events: 4096
+  flush.min_events: 256
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  username: ${ELASTICSEARCH_USERNAME:elastic}
+  password: ${ELASTICSEARCH_PASSWORD:changeme}
+
+setup.template.enabled: true
+setup.template.settings:
+  index.number_of_replicas: 0
+
+logging.metrics.enabled: false

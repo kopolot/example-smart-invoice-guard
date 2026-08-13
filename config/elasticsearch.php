@@ -16,6 +16,10 @@ return [
 
     'host' => env('ELASTICSEARCH_HOST', 'http://elasticsearch:9200'),
 
+    'username' => env('ELASTICSEARCH_USERNAME'),
+
+    'password' => env('ELASTICSEARCH_PASSWORD'),
+
     'invoices_index' => env('ELASTICSEARCH_INVOICES_INDEX', 'invoices'),
 
 ];

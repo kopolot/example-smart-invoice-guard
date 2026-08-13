@@ -43,7 +43,6 @@ services:
             ELASTIC_APM_GLOBAL_LABELS: ${ELASTIC_APM_GLOBAL_LABELS:-app=smart-invoice-guard,stack=local}
         depends_on:
             - proxysql
-            - apm-server
         networks:
             - app
 

@@ -36,6 +36,8 @@
         <env name="REDIS_PREFIX" value="testing-" />
         <env name="ELASTICSEARCH_ENABLED" value="true" />
         <env name="ELASTICSEARCH_HOST" value="http://elasticsearch:9200" />
+        <env name="ELASTICSEARCH_USERNAME" value="elastic" />
+        <env name="ELASTICSEARCH_PASSWORD" value="changeme" />
         <env name="ELASTICSEARCH_INVOICES_INDEX" value="invoices_testing" />
         <env name="PULSE_ENABLED" value="false" />
         <env name="TELESCOPE_ENABLED" value="false" />

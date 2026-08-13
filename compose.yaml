@@ -102,8 +102,11 @@ services:
         hostname: elasticsearch
         environment:
             - discovery.type=single-node
-            - xpack.security.enabled=false
+            # Fleet / Integrations require security. Single-node allows HTTP without TLS.
+            - xpack.security.enabled=true
             - xpack.security.http.ssl.enabled=false
+            - xpack.security.transport.ssl.enabled=false
+            - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
             - ES_JAVA_OPTS=-Xms512m -Xmx512m
             - cluster.name=smart-invoice-guard
             - cluster.routing.allocation.disk.threshold_enabled=false
@@ -116,7 +119,7 @@ services:
             test:
                 [
                     "CMD-SHELL",
-                    "curl -fsS http://localhost:9200/_cluster/health || exit 1",
+                    "curl -fsS -u elastic:${ELASTIC_PASSWORD:-changeme} http://localhost:9200/_cluster/health || exit 1",
                 ]
             interval: 10s
             timeout: 5s
@@ -130,9 +133,10 @@ services:
         hostname: kibana
         environment:
             ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-            XPACK_SECURITY_ENABLED: "false"
+            ELASTICSEARCH_USERNAME: kibana_system
+            ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-changeme}
             TELEMETRY_ENABLED: "false"
-            # Required even with security off (alerting / saved objects).
+            # Required for alerting / saved objects / Fleet session encryption.
             XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-localdevlocaldevlocaldevlocaldev12}
             XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-localdevlocaldevlocaldevlocaldev12}
             XPACK_SECURITY_ENCRYPTIONKEY: ${KIBANA_ENCRYPTION_KEY:-localdevlocaldevlocaldevlocaldev12}
@@ -143,6 +147,8 @@ services:
         depends_on:
             elasticsearch:
                 condition: service_healthy
+            apm-init:
+                condition: service_completed_successfully
         healthcheck:
             test:
                 [
@@ -152,7 +158,7 @@ services:
             interval: 10s
             timeout: 5s
             retries: 30
-            start_period: 60s
+            start_period: 90s
         networks:
             - app
 
@@ -161,6 +167,11 @@ services:
         hostname: apm-server
         command: >
             apm-server -e --strict.perms=false
+        environment:
+            ELASTICSEARCH_USERNAME: elastic
+            ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD:-changeme}
+            KIBANA_USERNAME: elastic
+            KIBANA_PASSWORD: ${ELASTIC_PASSWORD:-changeme}
         volumes:
             - ./docker/apm-server.yml:/usr/share/apm-server/apm-server.yml:ro
         depends_on:
@@ -180,9 +191,14 @@ services:
         networks:
             - app
 
-    # Creates .apm-* indices that Kibana would normally provision (central agent config).
+    # Sets kibana_system password + creates .apm-* indices for central config / sourcemaps.
     apm-init:
         image: curlimages/curl:8.12.1
+        environment:
+            ELASTICSEARCH_HOST: http://elasticsearch:9200
+            ELASTICSEARCH_USERNAME: elastic
+            ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-changeme}
+            KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-changeme}
         volumes:
             - ./docker/apm-init.sh:/apm-init.sh:ro
         entrypoint: ["/bin/sh", "/apm-init.sh"]
